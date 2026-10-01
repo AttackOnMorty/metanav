@@ -5,8 +5,7 @@ Meta-Nav is one page that answers **"what should I do now?"** It reads your Outl
 This document follows one refresh from start to finish, then explains each part of the page. `INSTALL.md` sets it up; `JUDGE.md` holds the exact instructions the AI follows.
 
 ```
-  launchd, hourly ─┐
-  SYNC NOW / metanav ─┤
+  the hourly job, SYNC NOW, or metanav
                    ▼   run.mjs runs these steps
   1. Collect   collect.mjs + fetch.mjs      ~25 s, no AI
                Outlook · Calendar · Teams · GitHub · Azure DevOps  →  inputs.json
@@ -23,7 +22,7 @@ This document follows one refresh from start to finish, then explains each part 
 
 ## 1. When it refreshes
 
-- **On a schedule.** A launchd job fires on the hour. `run.mjs` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If your Mac was asleep on the hour, launchd runs it when the Mac wakes.
+- **On a schedule.** A background job fires on the hour (launchd on macOS, Task Scheduler on Windows). `run.mjs` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If the computer was asleep on the hour, the job runs when it wakes.
 - **On demand, at any hour.** Use the **SYNC NOW** button on the page, or type `metanav` in a terminal.
 - **One at a time.** A lock stops two runs overlapping. While a run works, the page shows **Syncing**.
 - **Incremental.** Each run starts from the previous run's judgement. It re-checks everything that was still open, and reads only what's new since the last run. The very first run reads the last 30 days (`lookback_days`), so an ask nobody answered three weeks ago still turns up.
@@ -91,7 +90,7 @@ Six principles decide where things go:
    - Work a meeting needs moves up before that meeting.
    - A short gap before the next meeting suits a quick item; a long free stretch suits a big one.
 
-A new item that costs something *today* is marked urgent and triggers a macOS notification. This is used sparingly.
+A new item that costs something *today* is marked urgent and triggers a desktop notification. This is used sparingly.
 
 **Every ranking is written down.** Each run stores, in `runs/<time>.json`:
 - a `cost` sentence for every to-do;
@@ -132,14 +131,14 @@ Click a bar to open it:
 
 ## 6. Your clicks
 
-- **What gets saved.** ✓ (done), Resolved and Got it are saved by a small local service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your Mac sees the same clicks.
+- **What gets saved.** ✓ (done), Resolved and Got it are saved by a small local service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your computer sees the same clicks.
 - **Ticked means closed.** The next run treats a ticked item as closed. If something new happens on it later, it comes back.
 - **Deleting received mail counts as done.** Archiving it does too.
 
 ## 7. Privacy and files
 
 - **Read-only.** Nothing is sent, opened or marked read anywhere.
-- **Everything stays on your Mac.** The collected mail and chats (`inputs.json`) are deleted at the end of every run.
+- **Everything stays on your computer.** The collected mail and chats (`inputs.json`) are deleted at the end of every run.
 
 | Where | What |
 | --- | --- |
@@ -147,7 +146,7 @@ Click a bar to open it:
 | `~/metanav/runs/` | Each run's result, including `cost` and `tradeoffs`, kept 14 days. The next run starts from the newest. |
 | `~/metanav/logs/` | Each run's log, kept 7 days. `result` is the run's own summary. |
 | `~/metanav/state.json` | Your clicks. |
-| `~/Library/Caches/metanav/` | Meta-Nav's own Chrome profile, with your Microsoft sign-in. |
+| `~/Library/Caches/metanav/` (Windows: `%LOCALAPPDATA%\metanav\`) | Meta-Nav's own Chrome profile, with your Microsoft sign-in. |
 | `~/.claude/skills/metanav/` (or `~/.agents/skills/metanav/` with Codex) | The skill: `run.mjs` (the runner), `JUDGE.md` (the judge's instructions), `config.json`, and the scripts. |
 
 ## 8. When something looks off

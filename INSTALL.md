@@ -1,19 +1,20 @@
 # Installing Meta-Nav
 
-Meta-Nav is a skill for Claude Code or Codex. It builds a live "what should I do now" page from Outlook, Teams and GitHub, and refreshes it hourly on weekdays.
+Meta-Nav is a skill for Claude Code or Codex, on macOS or Windows. It builds a live "what should I do now" page from Outlook, Teams and GitHub (and Azure DevOps, if you use it), and refreshes it hourly on weekdays.
 
-You're reading this because the user asked you to install Meta-Nav. Work through these steps in order. Confirm each one before you move on. Stop and tell the user if anything fails. Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/skills/metanav` if you are Claude Code, `~/.agents/skills/metanav` if you are Codex — and `<OUT>` is the expanded `output_dir` from `config.json` (`~/metanav` → `/Users/<name>/metanav`). Use full paths everywhere below; launchd doesn't expand `~`.
+You're reading this because the user asked you to install Meta-Nav. Work through these steps in order. Confirm each one before you move on. Stop and tell the user if anything fails. Where a step differs, follow the **macOS** or the **Windows** part, whichever the user is on (on Windows, run the commands in PowerShell).
+
+Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/skills/metanav` if you are Claude Code, `~/.agents/skills/metanav` if you are Codex (on Windows, `~` is `%USERPROFILE%`) — and `<OUT>` is the expanded `output_dir` from `config.json` (`~/metanav` → `/Users/<name>/metanav`, or `C:\Users\<name>\metanav`). Use full paths everywhere below: background jobs don't expand `~`.
 
 1. **Get the files.** If `<SKILL>` doesn't exist yet, clone the repo this file came from into it — for `https://raw.githubusercontent.com/<owner>/metanav/main/INSTALL.md` that's `git clone https://github.com/<owner>/metanav <SKILL>`. The folder must be named exactly `metanav`: the skill, its background jobs and the paths in this guide are named after it. If `<SKILL>` already exists and isn't this repo, stop and ask. `<SKILL>/SKILL.md` should then exist. Read `README.md`, `HOW-IT-WORKS.md` and `SKILL.md` so you know what you're installing.
 
 2. **Check prerequisites.** Report anything missing, with the exact fix:
-   - The OS is macOS.
    - The agent that will judge each run is signed in: `claude` for Claude Code (a short `claude -p "say ok"` answers), or `codex login status` for Codex.
    - `node` (18 or later) and `npm` are on the user's PATH.
-   - Google Chrome is at `/Applications/Google Chrome.app`.
+   - Google Chrome is installed (macOS: in `/Applications`; Windows: under `Program Files` or `%LOCALAPPDATA%`, in `Google\Chrome\Application\chrome.exe`).
    - `gh auth status` succeeds, and its token scopes include `read:project`. If not, the user runs `gh auth refresh -h github.com -s read:project` themselves — it's interactive.
-   - `<SKILL>` is **not** under `~/Desktop`, `~/Documents`, `~/Downloads` or iCloud, and your skills folder is not a symlink into one of them. macOS guards those folders, and background jobs then stop on permission prompts.
-   - Nothing is listening on port 47615: `lsof -nP -iTCP:47615 -sTCP:LISTEN` prints nothing.
+   - Nothing is listening on port 47615. macOS: `lsof -nP -iTCP:47615 -sTCP:LISTEN` prints nothing. Windows: `Get-NetTCPConnection -LocalPort 47615 -State Listen` finds nothing.
+   - **macOS:** `<SKILL>` is **not** under `~/Desktop`, `~/Documents`, `~/Downloads` or iCloud, and your skills folder is not a symlink into one of them. macOS guards those folders, and background jobs then stop on permission prompts.
 
 3. **Install the collector's one dependency.** Run `npm ci` in `<SKILL>`. It installs `playwright-core`, which drives the installed Chrome; no browser is downloaded.
 
@@ -32,24 +33,38 @@ You're reading this because the user asked you to install Meta-Nav. Work through
    - `ado`: leave it `null` unless the user's work is (also) in Azure DevOps. If it is, set it to `{ "base_url": "https://dev.azure.com/<org>" }`: Meta-Nav then reads their work items, reviews, pull requests and @mentions across that organisation. To also watch one release pipeline, make it `https://dev.azure.com/<org>/<project>` and add `"release_definition": <id>`. Then check `az` is installed and signed in to that organisation's account (`az account show`).
    - Keep `output_dir` (`~/metanav`) and `lookback_days` (30) unless the user says otherwise.
 
-5. **Set up the two background jobs.**
-   - Create `<OUT>/logs`.
-   - In `metanav.plist` and `metanav-state.plist`, replace `__PATH__` with a PATH for launchd: the directories holding `node`, the agent's CLI (`claude` or `codex`), `gh` (and `az` if `ado` is set), then `/usr/bin:/bin:/usr/sbin:/sbin`, without duplicates. Use each real binary's directory (for `claude` usually `~/.local/bin`), not a terminal's wrapper under `/var/folders` — `type -a claude` lists them all.
-   - In `metanav.plist` and `metanav-state.plist`, replace `__SKILL__` with `<SKILL>` and `__OUT__` with `<OUT>`. Copy them to `~/Library/LaunchAgents/local.metanav.plist` and `~/Library/LaunchAgents/local.metanav-state.plist`.
-   - Load both: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.metanav-state.plist`, then the same for `local.metanav.plist`.
-   - Check the click store answers: `curl -s -X POST -H 'Origin: null' -d '{"key":"tower:read","value":{}}' http://127.0.0.1:47615/state` prints JSON with `"rev"`.
+5. **Set up the two background jobs:** the run, on the hour, and the click store (`state.mjs`), from login. Create `<OUT>/logs` first.
 
-6. **Add the `metanav` command.** Check that `metanav` isn't already a command (`type metanav`). If it is, use `metanav-sync` instead. Append this alias to `~/.zshrc`, with `<OUT>` replaced by the expanded output dir:
+   **macOS** (launchd):
+   - In `metanav.plist` and `metanav-state.plist`, replace `__PATH__` with a PATH for launchd: the directories holding `node`, the agent's CLI (`claude` or `codex`), `gh` (and `az` if `ado` is set), then `/usr/bin:/bin:/usr/sbin:/sbin`, without duplicates. Use each real binary's directory (for `claude` usually `~/.local/bin`), not a terminal's wrapper under `/var/folders` — `type -a claude` lists them all.
+   - In both, replace `__SKILL__` with `<SKILL>` and `__OUT__` with `<OUT>`. Copy them to `~/Library/LaunchAgents/local.metanav.plist` and `~/Library/LaunchAgents/local.metanav-state.plist`.
+   - Load both: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.metanav-state.plist`, then the same for `local.metanav.plist`.
+
+   **Windows** (Task Scheduler). Run this with `<SKILL>` filled in. `conhost --headless` keeps a console window from flashing up every hour:
+   ```powershell
+   $skill = '<SKILL>'
+   $node = (Get-Command node).Source
+   $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+   $run = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$node`" `"$skill\run.mjs`""
+   Register-ScheduledTask -TaskName 'Meta-Nav' -Action $run -Settings $settings -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date -Minute 0 -Second 0) -RepetitionInterval (New-TimeSpan -Hours 1)) -Force
+   $state = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$node`" `"$skill\state.mjs`""
+   Register-ScheduledTask -TaskName 'Meta-Nav state' -Action $state -Settings $settings -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) -Force
+   Start-ScheduledTask -TaskName 'Meta-Nav state'
    ```
-   alias metanav='touch <OUT>/.manual && launchctl kickstart gui/$(id -u)/local.metanav && echo "metanav: refreshing, about 3 minutes"'
-   ```
+   The tasks run as the user, with their PATH, so `claude` or `codex`, `gh` and `az` are found as in their terminal.
+
+   Then check the click store answers. macOS: `curl -s -X POST -H 'Origin: null' -d '{"key":"tower:read","value":{}}' http://127.0.0.1:47615/state`. Windows: `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/state -Body '{"key":"tower:read","value":{}}'`. It prints the state with a `rev`.
+
+6. **Add the `metanav` command** (a refresh now). Check that `metanav` isn't already a command; if it is, use `metanav-sync` instead.
+   - **macOS:** append to `~/.zshrc`: `alias metanav='touch <OUT>/.manual && launchctl kickstart gui/$(id -u)/local.metanav && echo "metanav: refreshing, about 3 minutes"'`
+   - **Windows:** append to the PowerShell profile (`$PROFILE`; create it if missing): `function metanav { Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/refresh -Body '{}' | Out-Null; 'metanav: refreshing, about 3 minutes' }`
 
 7. **Sign in to Microsoft 365, and the first run.** This part needs the user.
-   - Tell the user a Chrome window is about to open on Outlook and Teams, and that they should sign in there (and let it stay signed in; Teams may ask them to pick the account once). Then open it: `curl -s -X POST -H 'Origin: null' -d '{"source":"Outlook"}' http://127.0.0.1:47615/signin`.
+   - Tell the user a Chrome window is about to open on Outlook and Teams, and that they should sign in there (and let it stay signed in; Teams may ask them to pick the account once). Then open it — macOS: `curl -s -X POST -H 'Origin: null' -d '{"source":"Outlook"}' http://127.0.0.1:47615/signin`; Windows: `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/signin -Body '{"source":"Outlook"}'`.
    - The window closes by itself a few seconds after both Outlook's mail page and Teams have loaded, and the first run starts on its own. It reads the last 30 days, so it takes about 8 minutes.
    - While it runs, ask the user to check Outlook on the web → Settings → General → Language and time: the language is English, the date format is day/month/year (e.g. `30/09/2026`), and the time format is 12-hour (`1:01 PM`). Meta-Nav reads dates as Outlook shows them.
    - When `<OUT>/.running` is gone, check the newest log in `<OUT>/logs/`: its `agent`, `is_error` and `result`. The result names any source that failed. If Outlook or Teams says "sign-in needed", run the sign-in again.
-   - Open the panel: `open <OUT>/index.html`. Tell the user to keep that tab open — it reloads itself.
+   - Open the panel — macOS: `open <OUT>/index.html`; Windows: `Start-Process <OUT>\index.html`. Tell the user to keep that tab open — it reloads itself.
 
 8. **Finish.** Summarise what was installed and where. Remind the user:
    - SYNC NOW on the panel, or `metanav` in a new terminal, refreshes on demand;
@@ -59,10 +74,19 @@ You're reading this because the user asked you to install Meta-Nav. Work through
 
 ## Uninstall
 
+macOS:
 ```bash
 launchctl bootout gui/$(id -u)/local.metanav
 launchctl bootout gui/$(id -u)/local.metanav-state
 rm ~/Library/LaunchAgents/local.metanav.plist ~/Library/LaunchAgents/local.metanav-state.plist
 rm -rf ~/.claude/skills/metanav ~/.agents/skills/metanav ~/metanav ~/Library/Caches/metanav
 # then remove the `metanav` alias from ~/.zshrc
+```
+
+Windows (PowerShell):
+```powershell
+Unregister-ScheduledTask -TaskName 'Meta-Nav' -Confirm:$false
+Stop-ScheduledTask -TaskName 'Meta-Nav state'; Unregister-ScheduledTask -TaskName 'Meta-Nav state' -Confirm:$false
+Remove-Item -Recurse -Force "$HOME\.claude\skills\metanav", "$HOME\.agents\skills\metanav", "$HOME\metanav", "$env:LOCALAPPDATA\metanav" -ErrorAction SilentlyContinue
+# then remove the `metanav` function from $PROFILE
 ```

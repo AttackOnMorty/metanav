@@ -62,7 +62,7 @@ async function signInMicrosoft() {
   for (const deadline = Date.now() + 600e3; open && Date.now() < deadline;) {
     await sleep(2000);
     const portFile = join(PROFILE, 'DevToolsActivePort');
-    if (existsSync(portFile) && await signedIn(readFileSync(portFile, 'utf8').split('\n')[0])) { ok = true; await sleep(4000); break; }
+    if (existsSync(portFile) && await signedIn(readFileSync(portFile, 'utf8').split(/\r?\n/)[0].trim())) { ok = true; await sleep(4000); break; }
   }
   if (open) { p.kill(); await new Promise(r => { p.once('exit', r); setTimeout(r, 15000); }); }
   return ok;

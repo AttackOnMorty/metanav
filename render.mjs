@@ -51,7 +51,8 @@ function notify(title) {
     const ps = `$t = [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime]::GetTemplateContent([Windows.UI.Notifications.ToastTemplateType]::ToastText02)
 $x = $t.GetElementsByTagName('text'); $x.Item(0).AppendChild($t.CreateTextNode('Meta-Nav')) > $null; $x.Item(1).AppendChild($t.CreateTextNode([Console]::In.ReadToEnd())) > $null
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe').Show([Windows.UI.Notifications.ToastNotification]::new($t))`;
-    tool('powershell', ['-NoProfile', '-NonInteractive', '-Command', ps.replace(/\n/g, '; ')], { input: title });
+    // -EncodedCommand: the script as base64 UTF-16, so nothing in it needs quoting through the shell; the title comes on stdin
+    tool('powershell', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(ps, 'utf16le').toString('base64')], { input: title });
   }
 }
 

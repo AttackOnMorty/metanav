@@ -17,7 +17,7 @@ Install Meta-Nav by following https://raw.githubusercontent.com/AttackOnMorty/me
 
 ## Needs
 
-- macOS
+- macOS or Windows
 - Claude Code or Codex, signed in
 - Google Chrome, Node.js 18+, and `gh` (with the `read:project` scope); `az` if your work is in Azure DevOps
 - A Microsoft 365 work account. Outlook on the web set to English, day/month/year dates and a 12-hour clock.
@@ -30,6 +30,6 @@ Install Meta-Nav by following https://raw.githubusercontent.com/AttackOnMorty/me
 
 - Keep `~/metanav/index.html` open in a tab. It updates itself.
 - **SYNC NOW** on the page, or `metanav` in a terminal, refreshes now.
-- Read-only: nothing is sent or marked read, and everything stays on your Mac.
+- Read-only: nothing is sent or marked read, and everything stays on your computer.
 
 How it works: [HOW-IT-WORKS.md](HOW-IT-WORKS.md). Uninstall: end of [INSTALL.md](INSTALL.md).
