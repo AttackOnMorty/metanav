@@ -6,7 +6,8 @@ set -uo pipefail
 
 SINCE="$1"
 DIR="$(cd "$(dirname "$0")" && pwd)"
-OWNER=$(jq -r '.github_owner' "$DIR/config.json" | tr -d '\r')
+# github_owner is one org or a list: the search takes one org: qualifier per org (several are OR'd)
+OWNER=$(jq -r '[.github_owner] | flatten | map("org:" + .) | join(" ")' "$DIR/config.json" | tr -d '\r')
 RELEASE_DEF=$(jq -r '.ado.release_definition // empty' "$DIR/config.json" | tr -d '\r')
 ADO_BASE=$(jq -r '.ado.base_url // empty' "$DIR/config.json" | tr -d '\r')
 TODAY=$(date +%Y-%m-%d)
@@ -14,17 +15,17 @@ TODAY=$(date +%Y-%m-%d)
 # ---------- GitHub: one GraphQL call ----------
 GH_RAW=$(gh api graphql -f query="
 { me: viewer { login }
-  review: search(query:\"is:pr is:open review-requested:@me org:$OWNER archived:false\", type:ISSUE, first:30) { nodes { ... on PullRequest {
+  review: search(query:\"is:pr is:open review-requested:@me $OWNER archived:false\", type:ISSUE, first:30) { nodes { ... on PullRequest {
     number title url createdAt isDraft author { login } repository { name } additions deletions changedFiles
     reviews(last:30) { nodes { author { login } submittedAt } } } } }
-  mine: search(query:\"is:pr is:open author:@me org:$OWNER archived:false\", type:ISSUE, first:30) { nodes { ... on PullRequest {
+  mine: search(query:\"is:pr is:open author:@me $OWNER archived:false\", type:ISSUE, first:30) { nodes { ... on PullRequest {
     number title url createdAt isDraft reviewDecision repository { name } headRefName body additions deletions changedFiles
     closingIssuesReferences(first:1) { nodes { number repository { name } } }
     commits(last:1) { nodes { commit { statusCheckRollup { state } } } }
     comments(last:30) { nodes { url author { __typename login } createdAt } }
     reviews(last:30) { nodes { url author { __typename login } createdAt state } }
     reviewThreads(last:50) { nodes { isResolved } } } } }
-  issues: search(query:\"is:issue is:open assignee:@me org:$OWNER archived:false\", type:ISSUE, first:50) { nodes { ... on Issue {
+  issues: search(query:\"is:issue is:open assignee:@me $OWNER archived:false\", type:ISSUE, first:50) { nodes { ... on Issue {
     number title url createdAt body repository { name } assignees(first:5) { nodes { login } }
     timelineItems(itemTypes:[ASSIGNED_EVENT], last:10) { nodes { ... on AssignedEvent { createdAt assignee { ... on User { login } } } } }
     comments(last:20) { nodes { url author { login } createdAt body } }
