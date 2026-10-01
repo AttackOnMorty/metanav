@@ -28,16 +28,17 @@ Read `INPUTS`, `PREV`, `STATE` and `CONFIG` (who the user is, their projects, wh
 
 `INPUTS` holds private mail and chats: `run.mjs` deletes it after every run.
 
-## Step 2: GitHub + Azure DevOps — `github`, `ado`, `pr_states`
+## Step 2: GitHub + Azure DevOps — `github`, `ado`, `pr_states`, `issue_states`, `ado_states`
 
 - Every item in `work` and `review_requests` carries `since`: when it became the user's — a PBI's last assignment to them, their PR's opening, the review request (or their last review, when it's a re-review).
 - Every GitHub comment in the inputs carries its own `url`; each of the user's PRs with new feedback carries `latest_feedback_url`, the newest of it.
 - `github.work` is the "my work" tree: each sprint PBI (an issue on a project board) with its PRs nested (`kind: "pbi"`) — with its `assignees`, whole `body` and latest `comments`, so its impact can be read — and PRs with no PBI on the board flat (`kind: "pr"`). Parents are resolved from the closing reference, a `1234-` branch prefix, or a line-anchored `Part of / Fixes #N`; never a bare `#N` in prose.
 - `github.review_requests` — others' PRs waiting on the user, drafts included (`draft: true`), with their `size` (files, lines added and removed). `waiting_days` counts from the user's last review; `rereview: true` means the author has answered it.
 - `github.mentions` — where someone @mentioned the user on GitHub (issues, PR threads), since `SINCE`: `repo`, `title`, `url`, `unread`, the issue or PR itself — `state`, `assignees`, whole `body`, latest `comments` — and `last_by`, with `answered: true` when the latest word is the user's. They otherwise reach the user only as GitHub notification mail, which isn't read.
-- `ado.release` — the latest release of the pipeline in `config.ado`. `ado.skipped: true` means none is configured: leave Azure DevOps out of `sources` altogether.
+- `ado` — Azure DevOps, read the same way across the whole organisation and in the same shapes: `ado.work` (work items assigned to the user that are under way — in a sprint running now, or in progress and touched within the lookback — each with its `type`, `status`, `body`, `comments` and the PRs linked to it; then their PRs linked to none), `ado.review_requests` (PRs where they're a reviewer and haven't approved; `rereview: true` when the author pushed after the user's last word on a PR they voted down), `ado.mentions` (work item discussions that @mentioned them since `SINCE`; a mention in a PR comment comes as notification mail), and `ado.release` (the latest release of the pipeline `config.ado` names, if any). A PR's `review` is `APPROVED`, `CHANGES_REQUESTED`, `WAITING_FOR_AUTHOR` or `PENDING`; `merge: "conflicts"` means it can't merge as it is. Everything below applies to them as to their GitHub counterparts; their `id` is the web URL. `ado.skipped: true` means Azure DevOps isn't configured: leave it out of `sources` altogether.
 - `issue_states` — issues carried over from `PREV` that aren't in `work` or `mentions`, by URL: `state`, `assignees`, `body`, `comments`. How 5a re-judges whose an issue is when nothing new came in about it.
-- `pr_states` — the current state of every other PR the inputs link to (carried-over items, links in mail and chats), by URL: `state` (`OPEN` / `MERGED` / `CLOSED`), `isDraft`, `reviewDecision`, `latestReviews`, `updatedAt`. It's how 5a checks a loop about a PR; for a PR that isn't there, go by what the inputs say.
+- `ado_states` — Azure DevOps work items and PRs carried over from `PREV` that aren't in this run's lists, by URL: `state`, and for a PR its `votes` and `closedAt`.
+- `pr_states` — the current state of every other GitHub PR the inputs link to (carried-over items, links in mail and chats), by URL: `state` (`OPEN` / `MERGED` / `CLOSED`), `isDraft`, `reviewDecision`, `latestReviews`, `updatedAt`. It's how 5a checks a loop about a PR; for a PR that isn't there, go by what the inputs say.
 - `ok: false` on `github` or `ado` means that source failed — record it in `sources`, don't abort.
 
 `run.mjs` adds `work` and `review_requests` to the panel itself — leave them out of `brief.json`.
@@ -117,11 +118,11 @@ Keep `done` rows from `PREV` that closed today (local time, by `at`) — the pan
 ### 5b. What each list needs
 
 **`queue`** — what principle 1 finds, including:
-- Others' PRs in `review_requests`, from the day they're requested. Whether one goes in is your call: who is blocked on it, how long it has waited (`waiting_days`), whether the author has answered the user's last review (`rereview`), whether a draft is actually waiting on them or just parked.
-- Their PR's next step: `CHANGES_REQUESTED`, failing CI, `new_feedback`; approved and mergeable → "Merge #N".
-- Their PBIs under way (`github.work`, `kind: "pbi"`, status In progress / In review / Blocked — not Ready or backlog): one item each, `id` = the issue URL, its PRs in the `reason` and `actions`.
-- `github.mentions` that ask them something and aren't `answered`.
-- The configured release (`ado`): a stage `rejected`, `canceled`, or waiting on approval.
+- Others' PRs in `review_requests` (GitHub's and Azure DevOps'), from the day they're requested. Whether one goes in is your call: who is blocked on it, how long it has waited (`waiting_days`), whether the author has answered the user's last review (`rereview`), whether a draft is actually waiting on them or just parked.
+- Their PR's next step: `CHANGES_REQUESTED` (or `WAITING_FOR_AUTHOR`), failing CI, merge conflicts, `new_feedback`; approved and mergeable → "Merge #N".
+- Their PBIs under way (`github.work` and `ado.work`, `kind: "pbi"`, status In progress / In review / Blocked / Committed / Active — not Ready, New or backlog): one item each, `id` = the issue or work item URL, its PRs in the `reason` and `actions`.
+- `github.mentions` and `ado.mentions` that ask them something and aren't `answered`.
+- The configured release (`ado.release`): a stage `rejected`, `canceled`, or waiting on approval.
 - A meeting in the next few hours that needs preparation.
 
 A promise with a date ("Back in the office to make up WFH · Tue") gets `due`. "Answered" means a later `ME` message in that conversation that responds.

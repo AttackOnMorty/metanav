@@ -1,8 +1,9 @@
 // GitHub + Azure DevOps state for Meta-Nav. Deterministic, no judgement.
-// Usage: node fetch.mjs <SINCE ISO8601 UTC>   -> prints one JSON object (collect.mjs imports fetchAll instead)
+// Usage: node fetch.mjs <SINCE> [LOOKBACK]   (ISO 8601 UTC) -> prints one JSON object; collect.mjs imports fetchAll instead
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ado, config, github, graphql } from './common.mjs';
+import { fromAdo } from './ado.mjs';
+import { config, github, graphql } from './common.mjs';
 
 const pad = n => String(n).padStart(2, '0');
 const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -119,27 +120,12 @@ async function fromGithub(SINCE) {
   return { ok: true, review_requests, work, mentions };
 }
 
-// Azure DevOps (optional): the latest release of one pipeline. base_url is https://dev.azure.com/<org>/<project>
-async function fromAdo(SINCE) {
-  const { base_url, release_definition } = config.ado || {};
-  if (!base_url || !release_definition) return { ok: true, skipped: true };
-  const [, org, project] = base_url.match(/dev\.azure\.com\/([^/]+)\/([^/?#]+)/) || [];
-  const rm = `https://vsrm.dev.azure.com/${org}/${project}/_apis/release/releases`;
-  const list = await ado(`${rm}?definitionId=${release_definition}&$top=1&api-version=7.1`);
-  const id = list.value?.[0]?.id;
-  if (!id) return { ok: false, error: 'no release found' };
-  const r = await ado(`${rm}/${id}?api-version=7.1`);
-  return { ok: true, release: {
-    name: r.name, created: r.createdOn, stages: (r.environments || []).map(e => ({ name: e.name, status: e.status })),
-    url: `${base_url}/_releaseProgress?_a=release-pipeline-progress&releaseId=${id}`, is_new: r.createdOn >= SINCE } };
-}
-
-export async function fetchAll(SINCE) {
+export async function fetchAll(SINCE, LOOKBACK) {
   const [gh, az] = await Promise.all([
     fromGithub(SINCE).catch(e => ({ ok: false, error: `${String(e.message || e).slice(0, 200)} - run \`gh auth status\`` })),
-    fromAdo(SINCE).catch(e => ({ ok: false, error: `${String(e.message || e).slice(0, 200)} - run \`az login\`` })),
+    fromAdo(SINCE, LOOKBACK).catch(e => ({ ok: false, error: `${String(e.message || e).slice(0, 200)} - run \`az login\`` })),
   ]);
   return { since: SINCE, github: gh, ado: az };
 }
 
-if (fileURLToPath(import.meta.url) === resolve(process.argv[1] || '')) console.log(JSON.stringify(await fetchAll(process.argv[2])));
+if (fileURLToPath(import.meta.url) === resolve(process.argv[1] || '')) console.log(JSON.stringify(await fetchAll(process.argv[2], process.argv[3] || process.argv[2])));

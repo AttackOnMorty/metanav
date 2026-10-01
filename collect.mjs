@@ -10,6 +10,7 @@ import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PROFILE, SKILL as HERE, config, graphql } from './common.mjs';
+import { adoStates } from './ado.mjs';
 import { fetchAll } from './fetch.mjs';
 
 const [SINCE, LOOKBACK, FIRST, PREV, OUT] = process.argv.slice(2);
@@ -214,7 +215,7 @@ function fromPrev(file) {
 }
 
 const prev = fromPrev(PREV);
-const fetching = timed('GitHub + Azure DevOps', () => fetchAll(SINCE)
+const fetching = timed('GitHub + Azure DevOps', () => fetchAll(SINCE, LOOKBACK)
   .catch(e => ({ github: { ok: false, error: String(e.message || e).slice(0, 200) }, ado: { ok: false } })));
 
 const out = { collected_at: new Date().toISOString(), since: SINCE, lookback: LOOKBACK, first_run: FIRST === 'yes' };
@@ -235,6 +236,13 @@ out.github = fetched.github;
 out.ado = fetched.ado;
 out.pr_states = await timed('PR states', () => prStates(prev, out.mail, out.teams, out.github || {}));
 out.issue_states = await timed('issue states', () => issueStates(prev, out.github || {}));
+// Azure DevOps work items and PRs carried over from the last run that aren't in this run's lists, the same way
+if (out.ado?.ok && !out.ado.skipped) {
+  const known = new Set([...(out.ado.work || []).flatMap(w => [w, ...(w.prs || [])]), ...(out.ado.review_requests || []), ...(out.ado.mentions || [])].map(x => x.url));
+  const urls = [...new Set(JSON.stringify(prev.urls).match(/https:\/\/dev\.azure\.com\/[^"\s?#]+\/(?:_workitems\/edit|pullrequest)\/\d+/g) || [])]
+    .filter(u => !known.has(u)).slice(0, 30);
+  out.ado_states = urls.length ? await timed('ADO states', () => adoStates(urls)) : {};
+}
 timings.total = +((Date.now() - t0) / 1000).toFixed(1);
 out.timings = timings;
 writeFileSync(OUT, JSON.stringify(out));
@@ -244,6 +252,7 @@ const mailRows = Object.values(out.mail.folders || {}).reduce((n, r) => n + r.le
 console.log(JSON.stringify({
   seconds: timings.total, mail_rows: mailRows, calendar: out.mail.calendar?.length ?? 0, teams_conversations: out.teams.conversations?.length ?? 0,
   pr_states: Object.keys(out.pr_states || {}).length, issue_states: Object.keys(out.issue_states || {}).length, github_ok: !!out.github?.ok, ado_ok: !!out.ado?.ok,
+  ado_work: out.ado?.work?.length ?? 0, ado_reviews: out.ado?.review_requests?.length ?? 0, ado_mentions: out.ado?.mentions?.length ?? 0,
   outlook_signin_needed: !!out.mail.signin_needed, teams_signin_needed: !!out.teams.signin_needed,
   errors: [out.mail.error && `Outlook: ${out.mail.error}`, out.teams.error && `Teams: ${out.teams.error}`].filter(Boolean),
 }));

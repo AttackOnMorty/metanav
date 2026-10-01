@@ -1,6 +1,6 @@
 # How Meta-Nav works
 
-Meta-Nav is one page that answers **"what should I do now?"** It reads your Outlook mail and calendar, your Teams chats, GitHub and (optionally) one Azure DevOps pipeline. An AI judges what's yours to do, what others owe you and what's worth knowing, ranks your to-dos by the cost of delay, and writes it all into a local page styled after Persona 5.
+Meta-Nav is one page that answers **"what should I do now?"** It reads your Outlook mail and calendar, your Teams chats, GitHub and (optionally) Azure DevOps. An AI judges what's yours to do, what others owe you and what's worth knowing, ranks your to-dos by the cost of delay, and writes it all into a local page styled after Persona 5.
 
 This document follows one refresh from start to finish, then explains each part of the page. `INSTALL.md` sets it up; `JUDGE.md` holds the exact instructions the AI follows.
 
@@ -39,7 +39,7 @@ This document follows one refresh from start to finish, then explains each part 
 | **Outlook calendar** | Today's day view: each meeting's title and time. | Cancelled and declined meetings, other people's leave, and the personal blocks you list are dropped. |
 | **Teams** | Teams on the web keeps recent chats in its own browser cache. Meta-Nav reads that cache: direct chats, group chats and meeting chats with something new since the last run. Where you took part, it also takes the last 30 days of history for context. | No API calls and no chat opened, so nothing is marked read. Channels aren't read. Bot and reminder chats you list are skipped. |
 | **GitHub** (`gh`) | PRs waiting for your review, with their size and how long they've waited. Your open PRs: review state, CI, unresolved threads and new feedback. Your issues on the current sprint board, with body, comments, assignees, sprint end and when they were assigned to you. Where someone @mentioned you, and whether you've answered. The current state of any PR or issue the panel is already tracking. | Nothing is written to GitHub. |
-| **Azure DevOps** (optional, `az`) | The latest release of one pipeline, stage by stage. | — |
+| **Azure DevOps** (optional, `az`) | The same as GitHub, across your organisation: work items assigned to you that are under way, pull requests waiting on your review, your own PRs' votes, comments, build checks and conflicts, and work item discussions that @mention you. Optionally the latest release of one pipeline, stage by stage. | Nothing is written to Azure DevOps. A mention in a PR comment arrives as notification mail instead. |
 
 If Microsoft asks you to sign in again, that source is marked failed and the page shows a red banner with a **SIGN IN** button (section 5).
 

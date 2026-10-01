@@ -29,7 +29,7 @@ You're reading this because the user asked you to install Meta-Nav. Work through
    - `hours`: when scheduled runs happen, weekdays, on the hour. The default is 9 to 18.
    - `agent`: `"claude"` if you are Claude Code, `"codex"` if you are Codex — the agent each run calls to judge.
    - `judge_model`: for Claude, `"opus"` (`"sonnet"` is cheaper and faster but follows the rules less reliably). For Codex, leave it `""` for Codex's default model, or name one.
-   - `ado`: leave it `null` unless the user wants one Azure DevOps release pipeline watched. If they do, set it to `{ "base_url": "https://dev.azure.com/<org>/<project>", "release_definition": <id> }`, then check `az` is installed and signed in, and that `az extension show --name azure-devops` succeeds (else `az extension add --name azure-devops`).
+   - `ado`: leave it `null` unless the user's work is (also) in Azure DevOps. If it is, set it to `{ "base_url": "https://dev.azure.com/<org>" }`: Meta-Nav then reads their work items, reviews, pull requests and @mentions across that organisation. To also watch one release pipeline, make it `https://dev.azure.com/<org>/<project>` and add `"release_definition": <id>`. Then check `az` is installed and signed in to that organisation's account (`az account show`).
    - Keep `output_dir` (`~/metanav`) and `lookback_days` (30) unless the user says otherwise.
 
 5. **Set up the two background jobs.**
