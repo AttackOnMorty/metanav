@@ -97,7 +97,7 @@
   /* ---------- header: the field HUD (top-left) + the objective tracker (top-right) ---------- */
   header.top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: start; margin-bottom: 26px; }
   .hud { cursor: default; }
-  .hud-date { position: relative; display: inline-flex; align-items: flex-start; padding: 2px 58px 22px 8px; }
+  .hud-date { position: relative; display: inline-flex; align-items: flex-start; padding: 2px 58px 22px 8px; margin-left: 40px; }
   .hud-back { position: absolute; inset: 8px 50px 12px -8px; background: #fff; transform: rotate(-4deg);
     clip-path: polygon(0 16%, 34% 3%, 58% 10%, 100% 0, 94% 52%, 100% 100%, 62% 90%, 30% 100%, 4% 86%); }
   .hud-back::after { content: ""; position: absolute; inset: 5px; background: #000; clip-path: inherit; }
@@ -107,10 +107,10 @@
   .hud-date .d i { font: 110px/.9 var(--anton); font-style: normal; paint-order: stroke fill; }
   .hud-date .d i:nth-child(1) { color: #fff; -webkit-text-stroke: 6px #000; transform: rotate(-7deg) translateY(3px); }
   .hud-date .d i:nth-child(2) { color: #000; -webkit-text-stroke: 6px #fff; transform: rotate(5deg) translateY(14px); margin-left: -5px; }
-  .hud-date .wd { position: absolute; right: 8px; bottom: 4px; background: #fff; color: #000; font: 30px/1 var(--anton); padding: 3px 11px 1px;
+  .hud-date .wd { position: absolute; right: -10px; bottom: 4px; background: #fff; color: #000; font: 30px/1 var(--anton); padding: 3px 11px 1px;
     transform: rotate(-10deg) skewX(-10deg); box-shadow: 4px 4px 0 #000; }
   .hud-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 4px; }
-  .tod { font: 900 28px/1.02 var(--sans); color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; transform: translate(-8px, -12px) rotate(-10deg); }   /* tucked up under the date's left, as in the game */
+  .tod { font: 900 28px/1.02 var(--sans); color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; transform: translateY(-6px) rotate(-16deg); transform-origin: right top; }   /* under the date's left, as in the game: tilted about its top-right end so that end stays below the weekday */
   .tod span { display: block; } .tod span + span { margin-left: 1em; }
   .tod { position: relative; }
   .tod.fresh > span { animation: todIn .42s .16s cubic-bezier(.2,1.6,.4,1) both; }
@@ -374,6 +374,7 @@
     font: 44px/1 var(--anton); letter-spacing: .06em; white-space: nowrap; transform: translate(-50%, -50%) rotate(-12deg) scale(3); opacity: 0;
     animation: stampIn .22s .2s cubic-bezier(.2,1.6,.4,1) forwards; }
   .rq .clear-stamp, .ib .clear-stamp, .ph-post .clear-stamp { font-size: 26px; border-width: 3px; }
+  .clear-stamp.drop { border-color: #000; color: #000; }   /* DROPPED: the same exit, in black - closed by choice, not cleared */
   .clearing.card, .clearing.rq, .clearing.ib, .clearing.ph-post { animation: flyoff .34s .62s cubic-bezier(.5,0,.8,.4) forwards; }
   @keyframes slash { to { transform: rotate(var(--a, -9deg)) scaleX(1); } }
   @keyframes stampIn { to { opacity: 1; transform: translate(-50%, -50%) rotate(-12deg) scale(1); } }
@@ -626,7 +627,7 @@ const go = url => { if (!url) return; if (/^https?:/.test(url)) window.open(url,
 // The first paint of this run in this tab: designs play their intro only then, not on every reload.
 const FRESH_RUN = (() => { try { const was = sessionStorage.getItem('tower:seen-run'); sessionStorage.setItem('tower:seen-run', B.generated_at); return was !== B.generated_at; } catch { return true; } })();
 
-let beforeDone = null;   // optional: async el => {} — a design's "done" animation, awaited before the re-render
+let beforeDone = null;   // optional: async el => {} — a design's "done" (or drop) animation, awaited before the re-render
 function start(render) {
   document.addEventListener('click', async ev => {
     const t = ev.target.closest('[data-done], [data-dismiss], [data-restore], [data-nudge], [data-send], [data-cancel], [data-tab]');
@@ -638,6 +639,7 @@ function start(render) {
       D[t.dataset.key] = { at: t.dataset.at, when: new Date().toISOString(), title: t.dataset.title, url: t.dataset.url, ...(t.dataset.effort && { effort: t.dataset.effort }) };
       DONE.set(D);
     } else if (t.matches('[data-dismiss]')) {
+      if (beforeDone) await beforeDone(t);
       D = DONE.get();
       D[t.dataset.key] = { at: t.dataset.at, when: new Date().toISOString(), title: t.dataset.title, url: t.dataset.url, dismissed: true };
       DONE.set(D);
@@ -1212,7 +1214,7 @@ document.addEventListener('input', ev => { if (ev.target.matches?.('textarea')) 
 document.fonts?.ready.then(fitAll);
 
 // MISSION CLEAR: slash it, slam the stamp, fling it off — then core records the done and re-renders
-// (a request then comes back at the bottom of the list, stamped DONE!).
+// (a request then comes back at the bottom of the list, stamped DONE!). A drop plays the same with a black DROPPED stamp.
 beforeDone = async el => {
   if (reduced) return;
   const host = el.closest('[data-card], .rq, .ib, .ph-post');
@@ -1224,7 +1226,7 @@ beforeDone = async el => {
   const w = host.offsetWidth * 1.06, h = host.offsetHeight;
   const a = Math.min(9, Math.atan(h * .6 / w) * 180 / Math.PI);
   const top = h / 2 + w * Math.tan(a * Math.PI / 180) / 2;
-  host.insertAdjacentHTML('beforeend', `<span class="slash" style="--a:-${a.toFixed(2)}deg;--top:${top.toFixed(0)}px"></span><span class="clear-stamp">MISSION CLEAR</span>`);
+  host.insertAdjacentHTML('beforeend', `<span class="slash" style="--a:-${a.toFixed(2)}deg;--top:${top.toFixed(0)}px"></span>${el.matches('[data-dismiss]') ? '<span class="clear-stamp drop">DROPPED</span>' : '<span class="clear-stamp">MISSION CLEAR</span>'}`);
   await new Promise(r => setTimeout(r, 960));
 };
 
