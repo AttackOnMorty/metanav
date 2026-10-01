@@ -4,7 +4,7 @@ Meta-Nav is a skill for Claude Code or Codex. It builds a live "what should I do
 
 You're reading this because the user asked you to install Meta-Nav. Work through these steps in order. Confirm each one before you move on. Stop and tell the user if anything fails. Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/skills/metanav` if you are Claude Code, `~/.agents/skills/metanav` if you are Codex — and `<OUT>` is the expanded `output_dir` from `config.json` (`~/metanav` → `/Users/<name>/metanav`). Use full paths everywhere below; launchd doesn't expand `~`.
 
-1. **Get the files.** If `<SKILL>` doesn't exist yet, clone the repo the user gave you into it: `git clone <url> <SKILL>`. The folder must be named exactly `metanav`: the skill, its background jobs and the paths in this guide are named after it. If `<SKILL>` already exists and isn't this repo, stop and ask. `<SKILL>/SKILL.md` should then exist. Read `README.md`, `HOW-IT-WORKS.md` and `SKILL.md` so you know what you're installing.
+1. **Get the files.** If `<SKILL>` doesn't exist yet, clone the repo this file came from into it — for `https://raw.githubusercontent.com/<owner>/metanav/main/INSTALL.md` that's `git clone https://github.com/<owner>/metanav <SKILL>`. The folder must be named exactly `metanav`: the skill, its background jobs and the paths in this guide are named after it. If `<SKILL>` already exists and isn't this repo, stop and ask. `<SKILL>/SKILL.md` should then exist. Read `README.md`, `HOW-IT-WORKS.md` and `SKILL.md` so you know what you're installing.
 
 2. **Check prerequisites.** Report anything missing, with the exact fix:
    - The OS is macOS.

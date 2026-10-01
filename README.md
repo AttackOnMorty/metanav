@@ -36,21 +36,13 @@ A script collects everything in about 25 seconds; then an AI judges it — Claud
 
 ## Install
 
-Paste one of these (for a fork, use your fork's URL).
-
-Into **Claude Code**:
+Paste this into Claude Code or Codex (for a fork, use your fork's address):
 
 ```
-Install Meta-Nav: clone https://github.com/AttackOnMorty/metanav into ~/.claude/skills/metanav, then follow its INSTALL.md.
+Install Meta-Nav by following https://raw.githubusercontent.com/AttackOnMorty/metanav/main/INSTALL.md
 ```
 
-Into **Codex**:
-
-```
-Install Meta-Nav: clone https://github.com/AttackOnMorty/metanav into ~/.agents/skills/metanav, then follow its INSTALL.md.
-```
-
-It clones it, checks what you need, asks for your settings, sets up the two background jobs, and opens a Chrome window for your Microsoft sign-in. Then the first run reads your last 30 days, which takes about 8 minutes.
+It clones the repo into its own skills folder, checks what you need, asks for your settings, sets up the two background jobs, and opens a Chrome window for your Microsoft sign-in. Then the first run reads your last 30 days, which takes about 8 minutes.
 
 ## Cost
 
