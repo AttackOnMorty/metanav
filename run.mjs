@@ -81,11 +81,17 @@ if (agent === 'codex') {
   // workspace-write keeps its writes inside .inputs; the user's own Codex config (MCP servers, rules) and hooks aren't
   // loaded - hooks.json isn't covered by --ignore-user-config, and a hook waiting on a person would hang the run
   const last = join(DIR, 'last-message.txt');
-  const r = spawnSync('codex', ['exec', '--ignore-user-config', '--disable', 'hooks', '--skip-git-repo-check', '--ephemeral',
+  const r = spawnSync('codex', ['exec', '--json', '--ignore-user-config', '--disable', 'hooks', '--skip-git-repo-check', '--ephemeral',
     '--sandbox', 'workspace-write', '--cd', DIR, '-c', 'model_reasoning_effort="high"',
     ...(model && !/^(opus|sonnet|haiku|claude)/.test(model) ? ['--model', model] : []),
     '--output-last-message', last, prompt], { cwd: DIR, encoding: 'utf8', timeout: 20 * 60e3, maxBuffer: 64 << 20 });
-  log = { agent, model: model || 'default', is_error: r.status !== 0, result: read(last) || (r.stderr || '').slice(-4000) };
+  // token use, from each turn's usage event, so a run's cost can be worked out (Claude Code reports its own)
+  const usage = {};
+  for (const line of (r.stdout || '').split('\n')) {
+    let e; try { e = JSON.parse(line); } catch { continue; }
+    if (e.type === 'turn.completed') for (const [k, v] of Object.entries(e.usage || {})) usage[k] = (usage[k] || 0) + v;
+  }
+  log = { agent, model: model || 'default', is_error: r.status !== 0, result: read(last) || (r.stderr || '').slice(-4000), usage };
 } else {
   // Only Read and Write: no MCP servers (--strict-mcp-config with none given), no shell, no other tool
   const r = spawnSync('claude', ['-p', prompt, '--model', model || 'opus', '--strict-mcp-config',
