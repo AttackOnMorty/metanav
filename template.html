@@ -370,10 +370,9 @@
   .tc-x:hover, .tc-x:focus-visible { background: #000; color: #fff; }
   .tc-add { margin-top: 12px; padding: 3px 12px; border: 0; background: #fff; color: #000; font-weight: 900; font-size: 13px; box-shadow: inset 0 0 0 2px #000; transform: skewX(-12deg); }
   .tc-add:hover { background: #000; color: #fff; }
-  .tc-f { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+  .tc-f { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 20px; }   /* bottom right, Back then Confirm, like the game's prompts */
   .tc .send { background: #000; font-size: 13px; padding: 5px 14px; box-shadow: 3px 3px 0 var(--red); }
   .tc .cancel { background: #fff; color: #000; font-size: 13px; padding: 5px 14px; box-shadow: inset 0 0 0 2px #000; }
-  .tc-note { margin-left: auto; font-size: 12px; font-weight: 700; }
 
   /* ---------- PHAN-SITE: what people are saying — worth knowing, no action. In the game these posts scroll by in the
      bottom-right of the day-change screen; here they sit under the IM phone, the right column being "the other people". ---------- */
@@ -938,7 +937,7 @@ function queue(V) {
   }).join('');
   const head = V.rest.length || !done.length ? `${collage('REQUESTS', 'sec-next', 'sm')}<span class="cnt">${V.rest.length}</span>` : `${collage('CLEARED', 'sec-done', 'sm')}<span class="cnt">${V.done.filter(d => !d.dropped).length}</span>`;
   // TACTICS sits on the list it orders, with how many orders are set
-  const tac = `<button class="sec-tac" data-tactics title="Your standing orders for the ranking (T)">TACTICS <b>${(TACTICS.get().orders || []).length}</b></button>`;
+  const tac = `<button class="sec-tac" data-tactics title="Your rules for the ranking (T)">TACTICS <b>${(TACTICS.get().orders || []).length}</b></button>`;
   return `<section class="req"><h3 class="sec">${head}${tac}</h3>${rows}${doneRows}</section>`;
 }
 
@@ -1259,16 +1258,16 @@ document.addEventListener('click', ev => {
 // so the new order shows straight away.
 const tactics = Object.assign(document.createElement('div'), { className: 'tc-back', hidden: true });
 document.body.append(tactics);
-const tcRow = text => `<div class="tc-row"><textarea rows="1" spellcheck="false" aria-label="Order" placeholder="e.g. Tue/Wed: Project B work first">${e(text)}</textarea>
+const tcRow = text => `<div class="tc-row"><textarea rows="1" spellcheck="false" aria-label="Tactic" placeholder="e.g. Tue/Wed: Project B work first">${e(text)}</textarea>
   <button class="tc-x" data-tc-del title="Remove" aria-label="Remove"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button></div>`;
 function openTactics(n = 0) {   // n: the order to point at (1 for the first), from an item's mark
   const orders = TACTICS.get().orders || [];
   tactics.innerHTML = `<div class="tc" role="dialog" aria-modal="true" aria-label="Tactics">
     <div class="tc-h">${collage('TACTICS', 'tactics')}</div>
-    <p class="tc-sub">Standing orders for every sync: what only you know, in your own words.</p>
+    <p class="tc-sub">Brief your Navigator on what only you know. Every sync plays by your rules.</p>
     <div class="tc-list">${(orders.length ? orders : ['']).map(tcRow).join('')}</div>
-    <button class="tc-add" data-tc-add>+ Add order</button>
-    <div class="tc-f"><button class="send" data-tc-save><span>Save & sync</span></button><button class="cancel" data-tc-close><span>Cancel</span></button></div>
+    <button class="tc-add" data-tc-add>+ New tactic</button>
+    <div class="tc-f"><button class="cancel" data-tc-close><span>Cancel</span></button><button class="send" data-tc-save><span>Save & sync</span></button></div>
   </div>`;
   tactics.hidden = false; holding = true;
   tactics.querySelectorAll('textarea').forEach(fit);

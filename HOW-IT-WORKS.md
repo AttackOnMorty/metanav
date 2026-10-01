@@ -102,7 +102,7 @@ The page doesn't show these. When the order looks wrong, they tell you which rul
 
 **Header.** It shows today's date and time of day, when the data was last synced, and **SYNC NOW**. A red banner appears when a source failed. When the cause is an expired sign-in, the banner has a **SIGN IN** button: it opens a Chrome window on Outlook and Teams, closes it once you're in, and refreshes.
 
-**TACTICS** (on the Requests heading, with how many are set). Standing orders for every sync, a sentence each in your own words: context the data doesn't carry. For example "Tue and Wed are my Project B days: its sprint work comes first", "Asks from my manager come first", or "Release notes can wait until Friday". **Save & sync** keeps them and runs a sync, so you see the new order straight away. Each run reads them; where one conflicts with a general ranking rule, yours wins. An item that one of them placed carries a small **TACTICS** mark: click it to see, and change, the order behind it.
+**TACTICS** (on the Requests heading, with how many are set). Your rules for every sync, a sentence each in your own words: context the data doesn't carry. For example "Tue and Wed are my Project B days: its sprint work comes first", "Asks from my manager come first", or "Release notes can wait until Friday". **Save & sync** keeps them and runs a sync, so you see the new order straight away. Each run reads them; where one conflicts with a general ranking rule, yours wins. An item that one of them placed carries a small **TACTICS** mark: click it to see, and change, the tactic behind it.
 
 **Target: do this now.** The top of the ranked list, as a large card. It shows:
 - why it's first (the red tag);
