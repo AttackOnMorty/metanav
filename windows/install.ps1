@@ -33,7 +33,7 @@ function Need($ok, $msg) { if (-not $ok) { $script:problems += $msg } }
 function Has($cmd) { [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
 
 Need (Test-Path (Join-Path $Skill 'config.json')) 'config.json is missing: copy config.example.json to config.json and fill it in.'
-Need ((Has node) -and ([int](node -p 'process.versions.node.split(".")[0]') -ge 18)) 'Node.js 18 or later: winget install OpenJS.NodeJS.LTS'
+Need ((Has node) -and ([int]((node -v).TrimStart('v').Split('.')[0]) -ge 18)) 'Node.js 18 or later: winget install OpenJS.NodeJS.LTS'
 Need (Has npm) 'npm (comes with Node.js).'
 Need (Has jq) 'jq: winget install jqlang.jq'
 Need (Has gh) 'GitHub CLI: winget install GitHub.cli'
