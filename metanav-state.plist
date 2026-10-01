@@ -4,14 +4,20 @@
 <dict>
   <key>Label</key>
   <string>local.metanav-state</string>
-  <!-- the panel's click store (state.py): up from login, restarted if it ever stops.
-       Started through /bin/zsh, like the run job. The trailing `exit` keeps zsh from exec-ing python. -->
+  <!-- the panel's click store (state.mjs): up from login, restarted if it ever stops.
+       Started through /bin/zsh, like the run job. The trailing `exit` keeps zsh from exec-ing node. -->
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
     <string>-c</string>
-    <string>/usr/bin/python3 __SKILL__/state.py; exit $?</string>
+    <string>node __SKILL__/state.mjs; exit $?</string>
   </array>
+  <!-- the same PATH as the run job: SYNC NOW starts runs from here -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+  </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>

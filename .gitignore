@@ -1,4 +1,4 @@
-node_modules/
+node_modules
 config.json
 __pycache__/
 .DS_Store

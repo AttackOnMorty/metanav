@@ -1,26 +1,18 @@
 #!/usr/bin/env node
-// Meta-Nav's collector: reads Outlook (mail folders + today's calendar), Teams, and GitHub / Azure DevOps (fetch.sh, alongside
+// Meta-Nav's collector: reads Outlook (mail folders + today's calendar), Teams, and GitHub / Azure DevOps (fetch.mjs, alongside
 // the browser) in one go, with no model in the loop, and writes one JSON file for the run to judge (JUDGE.md, step 1).
 //
 // Usage: node collect.mjs <SINCE> <LOOKBACK> <first run: yes|no> <PREV run json, or ""> <out.json>
 //
 // Read-only: it reads list rows and the Teams cache, never opens a message, so nothing is marked read.
-// The browser profile is the runs' own (named after the output dir); state.py's SIGN IN signs in on the same one.
+// The browser profile is the runs' own (named after the output dir); state.mjs's SIGN IN signs in on the same one.
 import { chromium } from 'playwright-core';
-import { execFile } from 'node:child_process';
-import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { promisify } from 'node:util';
+import { join } from 'node:path';
+import { PROFILE, SKILL as HERE, config, graphql } from './common.mjs';
+import { fetchAll } from './fetch.mjs';
 
-const run = promisify(execFile);
-const HERE = dirname(fileURLToPath(import.meta.url));
 const [SINCE, LOOKBACK, FIRST, PREV, OUT] = process.argv.slice(2);
-const config = JSON.parse(readFileSync(join(HERE, 'config.json'), 'utf8'));
-const outDir = config.output_dir.replace(/^~/, homedir());
-const PROFILE = join(homedir(), 'Library/Caches/metanav', `chrome-${createHash('sha256').update(outDir).digest('hex').slice(0, 7)}`);
 const BOTS = config.teams?.skip_chats ?? [];   // bot and reminder chats: not people
 
 const t0 = Date.now();
@@ -178,8 +170,7 @@ async function prStates(prev, mail, teamsData, github) {
     return `p${i}: repository(owner: "${owner}", name: "${repo}") { pullRequest(number: ${n}) { title state isDraft reviewDecision mergedAt closedAt updatedAt author { login } latestReviews(first: 10) { nodes { author { login } state submittedAt } } } }`;
   });
   try {
-    const { stdout } = await run('gh', ['api', 'graphql', '-f', `query=query { ${parts.join('\n')} }`], { maxBuffer: 1 << 24 });
-    const data = JSON.parse(stdout).data || {};
+    const data = await graphql(`query { ${parts.join('\n')} }`);
     return Object.fromEntries(urls.map((u, i) => [u, data[`p${i}`]?.pullRequest ?? null]));
   } catch (e) {
     return { error: String(e.message || e).slice(0, 200) };
@@ -198,8 +189,7 @@ async function issueStates(prev, github) {
     return `i${i}: repository(owner: "${owner}", name: "${repo}") { issue(number: ${n}) { title state body assignees(first: 5) { nodes { login } } comments(last: 20) { nodes { url author { login } createdAt body } } } }`;
   });
   try {
-    const { stdout } = await run('gh', ['api', 'graphql', '-f', `query=query { ${parts.join('\n')} }`], { maxBuffer: 1 << 24 });
-    const data = JSON.parse(stdout).data || {};
+    const data = await graphql(`query { ${parts.join('\n')} }`);
     return Object.fromEntries(urls.map((u, i) => {
       const x = data[`i${i}`]?.issue;
       return [u, x ? { title: x.title, state: x.state, assignees: x.assignees.nodes.map(a => a.login), body: (x.body || '').slice(0, 20000),
@@ -224,8 +214,8 @@ function fromPrev(file) {
 }
 
 const prev = fromPrev(PREV);
-const fetching = timed('GitHub + Azure DevOps', () => run(join(HERE, 'fetch.sh'), [SINCE], { maxBuffer: 1 << 24 })
-  .then(r => JSON.parse(r.stdout)).catch(e => ({ github: { ok: false, error: String(e.message || e).slice(0, 200) }, ado: { ok: false } })));
+const fetching = timed('GitHub + Azure DevOps', () => fetchAll(SINCE)
+  .catch(e => ({ github: { ok: false, error: String(e.message || e).slice(0, 200) }, ado: { ok: false } })));
 
 const out = { collected_at: new Date().toISOString(), since: SINCE, lookback: LOOKBACK, first_run: FIRST === 'yes' };
 let context;

@@ -19,7 +19,7 @@ Install Meta-Nav by following https://raw.githubusercontent.com/AttackOnMorty/me
 
 - macOS
 - Claude Code or Codex, signed in
-- Google Chrome, Node.js 18+, Python 3, `jq`, and `gh` (with the `read:project` scope)
+- Google Chrome, Node.js 18+, and `gh` (with the `read:project` scope)
 - A Microsoft 365 work account. Outlook on the web set to English, day/month/year dates and a 12-hour clock.
 
 ## Cost

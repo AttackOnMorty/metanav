@@ -1,20 +1,17 @@
 #!/usr/bin/env node
 // Refresh Meta-Nav: hours guard, lock, collect, judge, render, clean up.
-// launchd fires it on the hour; `metanav` and the panel's SYNC NOW drop a .manual flag first, which skips the hours.
+// launchd (macOS) or Task Scheduler (Windows) fires it on the hour; `metanav` and the panel's SYNC NOW drop a .manual
+// flag first, which skips the hours.
 // Everything here is deterministic. The only judgement - what's yours, what others owe you, in what order - is one
 // call to the agent in config.json ("claude" or "codex"), which reads files and writes one file, brief.json.
 //   node run.mjs            a scheduled run (weekdays within config.hours, unless .manual is there)
 //   node run.mjs --rescan   a full rescan: rebuild everything over the whole lookback
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { CONFIG, OUT, SKILL, config, tool } from './common.mjs';
+import { renderBrief, repaint } from './render.mjs';
 
-const SKILL = dirname(fileURLToPath(import.meta.url));
-const CONFIG = join(SKILL, 'config.json');
-const config = JSON.parse(readFileSync(CONFIG, 'utf8'));
-const OUT = (config.output_dir || '~/metanav').replace(/^~(?=$|\/)/, homedir());
 const RESCAN = process.argv.includes('--rescan');
 const now = new Date();
 const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
@@ -38,8 +35,7 @@ if (existsSync(lock) && Date.now() - statSync(lock).mtimeMs > 20 * 60e3) rmSync(
 try { mkdirSync(lock); } catch { process.exit(0); }
 process.on('exit', () => rmSync(lock, { recursive: true, force: true }));
 
-const render = (...args) => spawnSync('python3', [join(SKILL, 'render.py'), ...args], { encoding: 'utf8' });
-render('--syncing');   // "Syncing…" on the open panel until this run rewrites it
+repaint(true);   // "Syncing…" on the open panel until this run rewrites it
 
 // The window: from the last run (never further back than the lookback), or the whole lookback on a first run
 const read = f => { try { return readFileSync(f, 'utf8').trim(); } catch { return ''; } };
@@ -55,11 +51,12 @@ const TODAY_PROJECT = (config.schedule || {})[now.toLocaleDateString('en-US', { 
 const DIR = join(OUT, '.inputs');
 mkdirSync(DIR, { recursive: true });
 const INPUTS = join(DIR, 'inputs.json'), BRIEF = join(DIR, 'brief.json');
-const collect = spawnSync('node', [join(SKILL, 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3 });
+const collect = spawnSync(process.execPath, [join(SKILL, 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3 });
 const collected = `${collect.stdout || ''}${collect.stderr || ''}`.trim();
 
 // Judge. The agent reads the inputs, the previous result, the user's clicks and the config, follows JUDGE.md,
 // and writes BRIEF - nothing else: no network, no shell of its own, so it runs with the least access either agent has.
+// The prompt goes in on stdin: it's long, and on Windows the agents start through the shell.
 const prompt = `You are Meta-Nav's judge, running unattended: nobody will answer a question, so decide, finish and write the file.
 Read ${join(SKILL, 'JUDGE.md')} and follow it, with these facts for this run:
 SINCE=${SINCE}
@@ -81,10 +78,10 @@ if (agent === 'codex') {
   // workspace-write keeps its writes inside .inputs; the user's own Codex config (MCP servers, rules) and hooks aren't
   // loaded - hooks.json isn't covered by --ignore-user-config, and a hook waiting on a person would hang the run
   const last = join(DIR, 'last-message.txt');
-  const r = spawnSync('codex', ['exec', '--json', '--ignore-user-config', '--disable', 'hooks', '--skip-git-repo-check', '--ephemeral',
-    '--sandbox', 'workspace-write', '--cd', DIR, '-c', 'model_reasoning_effort="high"',
+  const r = tool('codex', ['exec', '--json', '--ignore-user-config', '--disable', 'hooks', '--skip-git-repo-check', '--ephemeral',
+    '--sandbox', 'workspace-write', '--cd', DIR, '-c', 'model_reasoning_effort=high',
     ...(model && !/^(opus|sonnet|haiku|claude)/.test(model) ? ['--model', model] : []),
-    '--output-last-message', last, prompt], { cwd: DIR, encoding: 'utf8', timeout: 20 * 60e3, maxBuffer: 64 << 20 });
+    '--output-last-message', last, '-'], { cwd: DIR, input: prompt, timeout: 20 * 60e3 });
   // token use, from each turn's usage event, so a run's cost can be worked out (Claude Code reports its own)
   const usage = {};
   for (const line of (r.stdout || '').split('\n')) {
@@ -94,9 +91,9 @@ if (agent === 'codex') {
   log = { agent, model: model || 'default', is_error: r.status !== 0, result: read(last) || (r.stderr || '').slice(-4000), usage };
 } else {
   // Only Read and Write: no MCP servers (--strict-mcp-config with none given), no shell, no other tool
-  const r = spawnSync('claude', ['-p', prompt, '--model', model || 'opus', '--strict-mcp-config',
+  const r = tool('claude', ['-p', '--model', model || 'opus', '--strict-mcp-config',
     '--add-dir', SKILL, '--allowedTools', 'Read', 'Write', '--output-format', 'json'],
-    { cwd: OUT, encoding: 'utf8', timeout: 20 * 60e3, maxBuffer: 64 << 20 });
+    { cwd: OUT, input: prompt, timeout: 20 * 60e3 });
   try { log = { agent, ...JSON.parse(r.stdout) }; } catch { log = { agent, is_error: true, result: `${r.stdout || ''}${r.stderr || ''}`.slice(-4000) }; }
 }
 log.duration_ms ??= Date.now() - t0;
@@ -107,10 +104,9 @@ log.collect = collected;
 let brief = null;
 try { brief = JSON.parse(readFileSync(BRIEF, 'utf8')); } catch (e) { log.is_error = true; log.brief_error = String(e.message || e); }
 if (brief) {
-  const r = render(BRIEF, INPUTS);
-  if (r.status !== 0) { log.is_error = true; log.render_error = `${r.stdout}${r.stderr}`.trim().slice(-2000); }
+  try { renderBrief(BRIEF, INPUTS); } catch (e) { log.is_error = true; log.render_error = String(e.stack || e).slice(0, 2000); }
 }
-if (read(join(OUT, 'index.html')).includes('"syncing": true')) render('--idle');
+if (/"syncing":\s*true/.test(read(join(OUT, 'index.html')))) repaint(false);
 
 writeFileSync(join(OUT, 'logs', `${stamp}${RESCAN ? '-rescan' : ''}.json`), JSON.stringify(log, null, 1));
 

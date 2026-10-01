@@ -40,7 +40,7 @@ Read `INPUTS`, `PREV`, `STATE` and `CONFIG` (who the user is, their projects, wh
 - `pr_states` — the current state of every other PR the inputs link to (carried-over items, links in mail and chats), by URL: `state` (`OPEN` / `MERGED` / `CLOSED`), `isDraft`, `reviewDecision`, `latestReviews`, `updatedAt`. It's how 5a checks a loop about a PR; for a PR that isn't there, go by what the inputs say.
 - `ok: false` on `github` or `ado` means that source failed — record it in `sources`, don't abort.
 
-`render.py` adds `work` and `review_requests` to the panel itself — leave them out of `brief.json`.
+`run.mjs` adds `work` and `review_requests` to the panel itself — leave them out of `brief.json`.
 
 ## Step 3: Outlook — `mail`
 
@@ -53,7 +53,7 @@ One list of rows per folder (the received folders and Sent, from `config.json` �
 | Folder | What it's for |
 | --- | --- |
 | Received (`mail.received_folders`: Inbox and the subfolders the user's rules file mail into) | Mail sent to the user. Rules file it into the subfolders, so an ask can land in any of them. Keep items after `SINCE`, **read or unread** (the user may skim on a phone — read ≠ handled); on a first run also anything `Flagged`. |
-| `skipped_folders` (e.g. GitHub) | **Not read.** Notification mail; GitHub itself is covered by `fetch.sh`. |
+| `skipped_folders` (e.g. GitHub) | **Not read.** Notification mail; GitHub itself is in `github`. |
 | Sent | The user's promises and asks ("I will…", "could you…"). A Sent row's `label` starts with its **recipients**, not the sender — `<user.name>; Sam Lee; …` is a mail the user sent to themselves and Sam. Items after `SINCE` (first run: since `LOOKBACK`). Skip their own status reports (daily scrum emails and the like) — status, not commitments. |
 
 A received folder of teammates' stand-up or status emails (a `Daily Scrum` folder, say) is context — who's blocked, who's on leave — almost never an ask. Only an item addressed to the user by name is an action.
@@ -187,7 +187,7 @@ Write it to `BRIEF`, the whole file at once, as valid JSON.
 ```json
 {
   "date": "2026-09-26",
-  "generated_at": "<now, UTC ISO8601 — render.py replaces it with the collection time>",
+  "generated_at": "<now, UTC ISO8601 — run.mjs replaces it with the collection time>",
   "interval_min": 60,
   "since": "<SINCE>",
   "headline": "One sentence: the single most important thing right now.",
@@ -214,7 +214,7 @@ Write it to `BRIEF`, the whole file at once, as valid JSON.
 }
 ```
 
-Don't set `new` or `updated` — `render.py` computes both against the previous run from `id` and `last_activity`. Mail items: `"id": "<convid>"`; Teams items: `"id": "<conversation id>/<message id>"`; GitHub items: the PR/issue URL.
+Don't set `new` or `updated` — `run.mjs` computes both against the previous run from `id` and `last_activity`. Mail items: `"id": "<convid>"`; Teams items: `"id": "<conversation id>/<message id>"`; GitHub items: the PR/issue URL.
 `sources`: one entry each for **Outlook, Teams, GitHub**, and **Azure DevOps** when `config.ado` is set; `ok: false` with a short `note` whenever one failed or was skipped. The page shows a red banner for any failed source — a quiet panel must mean "nothing happened", never "didn't look".
 
 ## Step 7: Finish

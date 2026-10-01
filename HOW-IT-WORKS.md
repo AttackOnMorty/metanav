@@ -8,13 +8,13 @@ This document follows one refresh from start to finish, then explains each part 
   launchd, hourly ─┐
   SYNC NOW / metanav ─┤
                    ▼   run.mjs runs these steps
-  1. Collect   collect.mjs + fetch.sh       ~25 s, no AI
+  1. Collect   collect.mjs + fetch.mjs      ~25 s, no AI
                Outlook · Calendar · Teams · GitHub · Azure DevOps  →  inputs.json
                    ▼
   2. Judge     Claude Code or Codex, JUDGE.md  ~2–10 min
                inputs + the previous run + your clicks  →  brief.json
                    ▼
-  3. Render    render.py                     →  index.html, stamp.js, runs/<time>.json
+  3. Render    render.mjs                    →  index.html, stamp.js, runs/<time>.json
                    ▼
   4. The page  reloads itself; your clicks go to state.json and into the next run
 ```
@@ -132,7 +132,7 @@ Click a bar to open it:
 
 ## 6. Your clicks
 
-- **What gets saved.** ✓ (done), Resolved and Got it are saved by a small local service (`state.py`, on `127.0.0.1` only) into `state.json`. Every browser on your Mac sees the same clicks.
+- **What gets saved.** ✓ (done), Resolved and Got it are saved by a small local service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your Mac sees the same clicks.
 - **Ticked means closed.** The next run treats a ticked item as closed. If something new happens on it later, it comes back.
 - **Deleting received mail counts as done.** Archiving it does too.
 
