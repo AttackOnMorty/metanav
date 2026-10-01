@@ -13,6 +13,7 @@ Writes:
 """
 import hashlib
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timedelta
@@ -23,7 +24,7 @@ from urllib.parse import urlparse
 TRACKED = ["queue", "waiting", "highlights", "done"]
 
 here = Path(__file__).parent
-config = json.loads((here / "config.json").read_text())
+config = json.loads((here / "config.json").read_text(encoding="utf-8"))
 out_dir = Path(config["output_dir"]).expanduser()
 runs = out_dir / "runs"
 runs.mkdir(parents=True, exist_ok=True)
@@ -37,27 +38,27 @@ MAIL_FOLDERS = {urlparse(u).path.rstrip("/"): n for n, u in
 
 def write_panel(data):
     data = {**data, "mail_folders": MAIL_FOLDERS}
-    template = (here / "template.html").read_text()
+    template = (here / "template.html").read_text(encoding="utf-8")
     # The open page polls stamp.js once a minute and reloads only when it changes: new data, the
     # syncing flag, or a new template. Written after index.html, so a reload always gets the new page.
     stamp = hashlib.sha1((template + json.dumps(data, ensure_ascii=False)).encode()).hexdigest()[:12]
     # "</" inside the JSON would close the <script> tag early
     payload = json.dumps({**data, "stamp": stamp}, ensure_ascii=False).replace("</", "<\\/")
-    (out_dir / "index.html").write_text(template.replace("__BRIEF_DATA__", payload))
-    (out_dir / "stamp.js").write_text(f"window.towerStamp = '{stamp}';\n")
+    (out_dir / "index.html").write_text(template.replace("__BRIEF_DATA__", payload), encoding="utf-8")
+    (out_dir / "stamp.js").write_text(f"window.towerStamp = '{stamp}';\n", encoding="utf-8")
 
 
 if sys.argv[1] in ("--syncing", "--idle"):
     # Repaint the last result with or without the "syncing" flag. No history, no notification.
     last = sorted(runs.glob("*.json"))
     if last:
-        write_panel({**json.loads(last[-1].read_text()), "syncing": sys.argv[1] == "--syncing"})
+        write_panel({**json.loads(last[-1].read_text(encoding="utf-8")), "syncing": sys.argv[1] == "--syncing"})
     sys.exit(0)
 
-brief = json.loads(Path(sys.argv[1]).read_text())
+brief = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 # The run doesn't copy GitHub's "my work" and review requests into the brief; they come straight from the collector.
 if len(sys.argv) > 2:
-    inputs = json.loads(Path(sys.argv[2]).read_text())
+    inputs = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))
     github = inputs.get("github") or {}
     brief.setdefault("work", github.get("work", []))
     brief.setdefault("review_requests", github.get("review_requests", []))
@@ -75,7 +76,7 @@ def key(item):
 previous = sorted(runs.glob("*.json"))
 brief["first_run"] = not previous   # nothing to diff against: the page skips "since last run"
 if previous:
-    prev = json.loads(previous[-1].read_text())
+    prev = json.loads(previous[-1].read_text(encoding="utf-8"))
     for section in TRACKED:
         seen = {key(i) for i in prev.get(section, [])}
         for item in brief.get(section, []):
@@ -89,12 +90,23 @@ if previous:
 urgent = [q for q in brief.get("queue", []) if q.get("new") and q.get("urgency") == "high"]
 if urgent:
     title = urgent[0]["title"] if len(urgent) == 1 else f"{len(urgent)} new urgent items"
-    subprocess.run(["osascript", "-e", "on run argv", "-e",
-                    "display notification (item 2 of argv) with title (item 1 of argv) sound name \"Glass\"",
-                    "-e", "end run", "Meta-Nav", title], check=False)
+    if sys.platform == "win32":
+        # a toast through Windows PowerShell; the text goes in by environment variable, never into the script
+        toast = ("$t=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent('ToastText02');"
+                 "$n=$t.GetElementsByTagName('text');$n.Item(0).AppendChild($t.CreateTextNode($env:MN_TITLE))|Out-Null;"
+                 "$n.Item(1).AppendChild($t.CreateTextNode($env:MN_BODY))|Out-Null;"
+                 "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}\\WindowsPowerShell\\v1.0\\powershell.exe')"
+                 ".Show([Windows.UI.Notifications.ToastNotification]::new($t))")
+        subprocess.run(["powershell", "-NoProfile", "-Command",
+                        "[void][Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime];" + toast],
+                       env={**os.environ, "MN_TITLE": "Meta-Nav", "MN_BODY": title}, check=False, capture_output=True)
+    else:
+        subprocess.run(["osascript", "-e", "on run argv", "-e",
+                        "display notification (item 2 of argv) with title (item 1 of argv) sound name \"Glass\"",
+                        "-e", "end run", "Meta-Nav", title], check=False)
 
 stamp = datetime.now().strftime("%Y%m%d-%H%M")
-(runs / f"{stamp}.json").write_text(json.dumps(brief, ensure_ascii=False, indent=1))
+(runs / f"{stamp}.json").write_text(json.dumps(brief, ensure_ascii=False, indent=1), encoding="utf-8")
 # Only the latest run is ever read back; two weeks is plenty for looking into a bad call.
 cutoff = (datetime.now() - timedelta(days=14)).strftime("%Y%m%d")
 for old in runs.glob("*.json"):
@@ -103,5 +115,5 @@ for old in runs.glob("*.json"):
 
 write_panel(brief)
 out = out_dir / "index.html"
-(out_dir / ".last-run").write_text(brief["generated_at"])
+(out_dir / ".last-run").write_text(brief["generated_at"], encoding="utf-8")
 print(out)

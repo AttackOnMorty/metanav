@@ -1,4 +1,6 @@
-# Installing Meta-Nav
+# Installing Meta-Nav (macOS)
+
+> On Windows? Follow [`INSTALL-WINDOWS.md`](INSTALL-WINDOWS.md) instead.
 
 Meta-Nav is a Claude Code skill. It builds a live "what should I do now" page from Outlook, Teams and GitHub, and refreshes it hourly on weekdays.
 

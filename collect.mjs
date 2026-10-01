@@ -10,8 +10,9 @@ import { chromium } from 'playwright-core';
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { promisify } from 'node:util';
 
@@ -19,8 +20,13 @@ const run = promisify(execFile);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const [SINCE, LOOKBACK, FIRST, PREV, OUT] = process.argv.slice(2);
 const config = JSON.parse(readFileSync(join(HERE, 'config.json'), 'utf8'));
-const outDir = config.output_dir.replace(/^~/, homedir());
-const PROFILE = join(homedir(), 'Library/Caches/metanav', `chrome-${createHash('sha256').update(outDir).digest('hex').slice(0, 7)}`);
+const WINDOWS = process.platform === 'win32';
+const outDir = resolve(config.output_dir.replace(/^~/, homedir()));   // resolved, so state.py hashes the same string
+const CACHE = WINDOWS ? join(process.env.LOCALAPPDATA || join(homedir(), 'AppData/Local'), 'metanav') : join(homedir(), 'Library/Caches/metanav');
+const PROFILE = join(CACHE, `chrome-${createHash('sha256').update(outDir).digest('hex').slice(0, 7)}`);
+// fetch.sh needs Git Bash: a bare `bash` on Windows is often WSL's
+const GIT_BASH = [process.env.CLAUDE_CODE_GIT_BASH_PATH, ...['ProgramFiles', 'ProgramFiles(x86)', 'LocalAppData'].map(v => join(process.env[v] || '', 'Git/bin/bash.exe'))]
+  .find(p => p && existsSync(p)) || 'bash';
 const BOTS = config.teams?.skip_chats ?? [];   // bot and reminder chats: not people
 
 const t0 = Date.now();
@@ -224,7 +230,7 @@ function fromPrev(file) {
 }
 
 const prev = fromPrev(PREV);
-const fetching = timed('GitHub + Azure DevOps', () => run(join(HERE, 'fetch.sh'), [SINCE], { maxBuffer: 1 << 24 })
+const fetching = timed('GitHub + Azure DevOps', () => (WINDOWS ? run(GIT_BASH, [join(HERE, 'fetch.sh').replaceAll('\\', '/'), SINCE], { maxBuffer: 1 << 24 }) : run(join(HERE, 'fetch.sh'), [SINCE], { maxBuffer: 1 << 24 }))
   .then(r => JSON.parse(r.stdout)).catch(e => ({ github: { ok: false, error: String(e.message || e).slice(0, 200) }, ado: { ok: false } })));
 
 const out = { collected_at: new Date().toISOString(), since: SINCE, lookback: LOOKBACK, first_run: FIRST === 'yes' };

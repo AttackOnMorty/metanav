@@ -22,7 +22,7 @@ Only what reaches the user through their own mail, chats, GitHub and Azure DevOp
 | `fetch.sh` | GitHub + Azure DevOps → JSON. Deterministic, no judgement. |
 | `teams-extract.js` | Reads Teams messages from Teams' own local cache. |
 | `template.html` | The panel (Persona 5 style). Renders whatever `brief.json` holds; checks `stamp.js` every minute and reloads only when a run has written something new. |
-| `render.py` | Flags items new / updated against the previous run, sends a macOS notification for new high-urgency items, writes the panel (plus `stamp.js`, which the open page polls) and the run history. `--syncing` / `--idle` repaint the last result with or without the "Syncing" state. |
+| `render.py` | Flags items new / updated against the previous run, sends a desktop notification (macOS or Windows) for new high-urgency items, writes the panel (plus `stamp.js`, which the open page polls) and the run history. `--syncing` / `--idle` repaint the last result with or without the "Syncing" state. |
 | `run.sh` | The scheduled entry point: hours guard, lock, `claude -p "/metanav unattended"` from the output dir with the model from `config.json`, "Syncing" on/off, private-dump cleanup. |
 | `state.py` | The panel's click store: a small service on 127.0.0.1 that writes the user's done / resolved / Got it clicks to `<output dir>/state.json` — a page opened from disk can't write files. Every browser shares it, and each run reads it (step 5). Without it the page keeps clicks in the browser. It also runs the panel's SYNC NOW button (a run now, whatever the hour) and the banner's SIGN IN button: `az login` for Azure DevOps, or a visible window on the runs' own browser profile for Outlook and Teams (it closes once both have loaded), then a refresh. So a failed source's `note` should say "sign-in needed" when that's the cause — the button shows only then. |
 | `metanav.plist` / `metanav-state.plist` | launchd jobs (`local.metanav`, `local.metanav-state`): `run.sh` on the hour, and `state.py` from login. `INSTALL.md` sets them up. |
@@ -41,12 +41,12 @@ One Bash call: the window, then `collect.mjs`, which reads everything at once �
 
 ```bash
 CFG="${CLAUDE_SKILL_DIR}/config.json"
-OUT=$(jq -r '.output_dir // "~/metanav"' "$CFG"); OUT="${OUT/#\~/$HOME}"
+OUT=$(jq -r '.output_dir // "~/metanav"' "$CFG" | tr -d '\r'); OUT="${OUT/#\~/$HOME}"
 LAST=$(cat "$OUT/.last-run" 2>/dev/null)
 PREV=$(find "$OUT/runs" -name '*.json' 2>/dev/null | sort | tail -1)
 # how far back open loops reach, and where a first run starts
-DAYS=$(jq -r '.lookback_days // 30' "$CFG")
-LOOKBACK=$(date -u -v-${DAYS}d +%Y-%m-%dT%H:%M:%SZ)
+DAYS=$(jq -r '.lookback_days // 30' "$CFG" | tr -d '\r')
+LOOKBACK=$(date -u -v-${DAYS}d +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "-${DAYS} days" +%Y-%m-%dT%H:%M:%SZ)   # BSD (macOS) or GNU (Git Bash) date
 SINCE=${LAST:-$LOOKBACK}
 [[ "$SINCE" < "$LOOKBACK" ]] && SINCE=$LOOKBACK   # back from a long break: loops don't reach further than this
 FIRST=$([[ -n "$PREV" ]] && echo no || echo yes)
@@ -259,7 +259,8 @@ Don't set `new` or `updated` — `render.py` computes both against the previous 
 ## Step 7: Render
 
 ```bash
-python3 "${CLAUDE_SKILL_DIR}/render.py" "<SCRATCH>/brief.json" "<OUT>/.inputs/inputs.json"
+PY=$(command -v python3 || command -v python)   # Windows installs often have only `python`
+"$PY" "${CLAUDE_SKILL_DIR}/render.py" "<SCRATCH>/brief.json" "<OUT>/.inputs/inputs.json"
 ```
 
 `render.py` takes `work` and `review_requests` from the inputs. On an unattended run that's the last step: `run.sh` deletes `<OUT>/.inputs/` (private mail and chats). When the user runs `/metanav` from a session, delete it yourself: `rm -f "<OUT>/.inputs/inputs.json"`.

@@ -3,7 +3,7 @@
 browser and every run share.
 
 A page opened from disk can read files beside it but can't write any, so this small service writes for it.
-It listens on 127.0.0.1 only; launchd starts it at login and restarts it if it stops (metanav-state.plist).
+It listens on 127.0.0.1 only; launchd starts it at login and restarts it if it stops (metanav-state.plist; on Windows, a Task Scheduler task).
 
   POST /state   {"key": "tower:dismissed" | "tower:read", "value": {...}}   -> the whole state, as JSON
   POST /signin  {"source": "Azure DevOps" | "Outlook" | "Teams"}          -> {"status": "started" | "busy"}
@@ -18,7 +18,9 @@ Writes:
 import hashlib
 import json
 import os
+import shutil
 import subprocess
+import sys
 import threading
 import time
 import urllib.request
@@ -29,24 +31,34 @@ PORT = 47615
 KEYS = ("tower:dismissed", "tower:read")
 
 here = Path(__file__).parent
-out_dir = Path(json.loads((here / "config.json").read_text())["output_dir"]).expanduser()
+out_dir = Path(json.loads((here / "config.json").read_text(encoding="utf-8"))["output_dir"]).expanduser()
 STATE = out_dir / "state.json"
 
-# launchd gives a bare PATH; az lives in Homebrew. BROWSER=open: Python's default way to open a browser is
-# AppleScript, which macOS stops when it comes from a terminal app - `open` always works.
-ENV = {**os.environ, "BROWSER": "open",
-       "PATH": f"{Path.home()}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"}
-CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+WINDOWS = sys.platform == "win32"
+if WINDOWS:
+    # Task Scheduler runs this as the user, so the PATH is already the user's
+    ENV = dict(os.environ)
+    CHROME = next((c for c in (os.path.join(os.environ.get(v, ""), "Google", "Chrome", "Application", "chrome.exe")
+                               for v in ("PROGRAMFILES", "PROGRAMFILES(X86)", "LOCALAPPDATA")) if os.path.exists(c)),
+                  shutil.which("chrome") or "chrome")
+    CACHE = Path(os.environ.get("LOCALAPPDATA", Path.home() / "AppData/Local")) / "metanav"
+else:
+    # launchd gives a bare PATH; az lives in Homebrew. BROWSER=open: Python's default way to open a browser is
+    # AppleScript, which macOS stops when it comes from a terminal app - `open` always works.
+    ENV = {**os.environ, "BROWSER": "open",
+           "PATH": f"{Path.home()}/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"}
+    CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    CACHE = Path.home() / "Library/Caches/metanav"
 # The scheduled runs' own browser profile, as collect.mjs opens it (named after the output dir)
-PROFILE = Path.home() / "Library/Caches/metanav" / f"chrome-{hashlib.sha256(str(out_dir).encode()).hexdigest()[:7]}"
-# The launchd job that runs Meta-Nav (metanav.plist), named after the skill's folder
-JOB = f"local.{here.name}"
+PROFILE = CACHE / f"chrome-{hashlib.sha256(str(out_dir.resolve()).encode()).hexdigest()[:7]}"
+# The scheduled job that runs Meta-Nav (launchd's metanav.plist, or the Task Scheduler task), named after the skill's folder
+JOB = f"local.{here.name}" if not WINDOWS else here.name
 signing = {}   # what's being signed in to right now, so a second click doesn't open a second window
 
 
 def load():
     try:
-        return json.loads(STATE.read_text())
+        return json.loads(STATE.read_text(encoding="utf-8"))
     except (FileNotFoundError, ValueError):
         return {"rev": 0}
 
@@ -54,7 +66,7 @@ def load():
 def write(path, text):
     # write-then-rename, so a run or a page never reads half a file
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text)
+    tmp.write_text(text, encoding="utf-8")
     os.replace(tmp, path)
 
 
@@ -66,7 +78,8 @@ def save(state):
 def refresh():
     # the same as `metanav` in ~/.zshrc: a run now, whatever the hour, so the banner goes as soon as the sign-in works
     (out_dir / ".manual").touch()
-    subprocess.run(["launchctl", "kickstart", f"gui/{os.getuid()}/{JOB}"], env=ENV, capture_output=True)
+    cmd = ["schtasks", "/run", "/tn", JOB] if WINDOWS else ["launchctl", "kickstart", f"gui/{os.getuid()}/{JOB}"]
+    subprocess.run(cmd, env=ENV, capture_output=True)
 
 
 def signed_in(port):
@@ -93,12 +106,15 @@ def sign_in_microsoft():
     while chrome.poll() is None and time.time() < deadline:
         time.sleep(2)
         port_file = PROFILE / "DevToolsActivePort"
-        if port_file.exists() and signed_in(port_file.read_text().split()[0]):
+        if port_file.exists() and signed_in(port_file.read_text(encoding="utf-8").split()[0]):
             ok = True
             time.sleep(4)
             break
     if chrome.poll() is None:
-        chrome.terminate()
+        if WINDOWS:   # take Chrome's helper processes down with it, or they keep the profile locked
+            subprocess.run(["taskkill", "/PID", str(chrome.pid), "/T", "/F"], capture_output=True)
+        else:
+            chrome.terminate()
         chrome.wait(timeout=15)
     return ok
 

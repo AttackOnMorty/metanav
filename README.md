@@ -26,9 +26,9 @@ A script collects everything in about 25 seconds; then Claude (Opus by default) 
 
 ## What you need
 
-- **macOS.** Scheduling uses `launchd`.
+- **macOS** (scheduling uses `launchd`) **or Windows 10/11** (Task Scheduler; also needs Git for Windows, whose Git Bash runs `fetch.sh`).
 - **Claude Code**, signed in. Scheduled runs use auto permission mode, so they run unattended.
-- **Google Chrome** in `/Applications`, **Node.js** 18+, `jq`, and `python3`.
+- **Google Chrome** (in `/Applications` on macOS, the usual install folder on Windows), **Node.js** 18+, `jq`, and `python3`.
 - **`gh`**, signed in with the `read:project` scope (for sprint board status). `az` only if you want an Azure DevOps pipeline.
 - A Microsoft 365 account you can use in Outlook and Teams on the web. You sign in once, in a Chrome window Meta-Nav opens for you.
 - Outlook on the web in **English**, with a **day/month/year** date format and a **12-hour** clock (the English (Australia) defaults). Meta-Nav reads dates and times as Outlook displays them.
@@ -41,6 +41,8 @@ Paste this into Claude Code (for a fork, use your fork's URL):
 ```
 Install Meta-Nav: clone https://github.com/AttackOnMorty/metanav into ~/.claude/skills/metanav, then follow its INSTALL.md.
 ```
+
+On Windows, clone into `~/.claude/skills/metanav` and have Claude follow `INSTALL-WINDOWS.md` instead.
 
 Claude clones it, checks what you need, asks for your settings, sets up the two background jobs, and opens a Chrome window for your Microsoft sign-in. Then the first run reads your last 30 days, which takes about 8 minutes.
 
@@ -66,6 +68,8 @@ The collected mail and chats are deleted at the end of every run.
 - Change what's read or skipped in `~/.claude/skills/metanav/config.json`.
 
 ## Uninstall
+
+On Windows, see `INSTALL-WINDOWS.md`. On macOS:
 
 ```bash
 launchctl bootout gui/$(id -u)/local.metanav

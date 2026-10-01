@@ -2,12 +2,13 @@
 # Fetch GitHub + Azure DevOps state for Meta-Nav.
 # Usage: fetch.sh <since-ISO8601-UTC>   -> prints one JSON object to stdout
 set -uo pipefail
+# jq.exe on Windows ends lines with CRLF; the config reads below strip the CR (a no-op elsewhere)
 
 SINCE="$1"
 DIR="$(cd "$(dirname "$0")" && pwd)"
-OWNER=$(jq -r '.github_owner' "$DIR/config.json")
-RELEASE_DEF=$(jq -r '.ado.release_definition // empty' "$DIR/config.json")
-ADO_BASE=$(jq -r '.ado.base_url // empty' "$DIR/config.json")
+OWNER=$(jq -r '.github_owner' "$DIR/config.json" | tr -d '\r')
+RELEASE_DEF=$(jq -r '.ado.release_definition // empty' "$DIR/config.json" | tr -d '\r')
+ADO_BASE=$(jq -r '.ado.base_url // empty' "$DIR/config.json" | tr -d '\r')
 TODAY=$(date +%Y-%m-%d)
 
 # ---------- GitHub: one GraphQL call ----------
