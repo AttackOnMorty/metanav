@@ -49,8 +49,9 @@
     padding: 8px 18px; background: #000; color: #fff; font: 700 13px/1 var(--sans); transform: skewX(-10deg); box-shadow: 5px 5px 0 var(--red); }
   .keys[hidden] { display: none; }
   .keys > span { display: flex; align-items: center; gap: 7px; transform: skewX(10deg); white-space: nowrap; }
-  .keys kbd { min-width: 22px; padding: 3px 6px; background: #fff; color: #000; font: 14px/1 var(--anton); letter-spacing: .02em; text-align: center; }
-  .keys kbd svg { display: block; height: 14px; width: auto; fill: currentColor; }   /* arrows drawn, not from a fallback font */
+  .keys kbd { display: inline-flex; align-items: center; justify-content: center; box-sizing: border-box; height: 20px; min-width: 22px; padding: 0 6px;
+    background: #fff; color: #000; font: 14px/1 var(--anton); letter-spacing: .02em; }
+  .keys kbd svg { display: block; fill: currentColor; }   /* arrows drawn, not from a fallback font: the same triangle, turned */
   @media (max-width: 600px) { .keys { display: none; } }   /* a phone has no keyboard */
   .goto { position: fixed; z-index: 50; right: 28px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); pointer-events: none;
     display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 56px); padding: 6px 18px 6px 8px;
@@ -1060,14 +1061,17 @@ addEventListener('resize', () => { clearTimeout(relock); relock = setTimeout(loc
 document.fonts?.ready.then(lockRows);
 
 // The keyboard, like the game's controller: ↑↓ move the cursor in a column, ←→ switch columns, Enter confirms, Space
-// marks done, Esc backs out, R syncs. Confirming the target or a Waiting On bar opens its buttons like the game's submenu:
-// ←→ choose one, Enter presses it, Esc backs out. The cursor and the prompts show only while the keyboard is in use: the
+// marks done, Esc backs out, R syncs. Enter on a Waiting On bar opens the chat; ↓ then steps into its buttons, below it,
+// and leaving the bar closes the chat. Enter on the target steps into its buttons. In a row of buttons ←→ choose one and
+// Enter presses it, like the game's submenus. The cursor and the prompts show only while the keyboard is in use: the
 // mouse takes over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and
 // Phan-Site.
 const keys = Object.assign(document.createElement('div'), { className: 'keys', hidden: true });
 document.body.append(keys);
 let kb = null;   // { col: 0 | 1, i, act } while the keyboard is in use; act: the chosen button, inside a submenu
-const UD = '<kbd><svg viewBox="0 0 12 16"><path d="M6 0l6 7H0zM6 16L0 9h12z"/></svg></kbd>', LR = '<kbd><svg viewBox="0 0 16 12"><path d="M0 6l7-6v12zM16 6l-7 6V0z"/></svg></kbd>';
+const DN = '<kbd><svg width="10" height="6" viewBox="0 0 10 6"><path d="M5 6L0 0h10z"/></svg></kbd>';
+const UD = '<kbd><svg width="10" height="14" viewBox="0 0 10 14"><path d="M5 0l5 6H0zM5 14L0 8h10z"/></svg></kbd>';
+const LR = '<kbd><svg width="14" height="10" viewBox="0 0 14 10"><path d="M0 5l6-5v10zM14 5l-6 5V0z"/></svg></kbd>';
 const acts = el => [...el.querySelectorAll(el.matches('.ib') ? '.ib-foot > button, .ib-foot > a' : '.acts > a, .composer-btns > button, .composer-btns > a')];
 const slots = col => [...document.querySelectorAll(col ? '#app .ib, #app .ph-post' : '#app [data-card]:not(.calm), #app .rq[data-i]')];
 function kbPaint(scroll) {
@@ -1095,9 +1099,10 @@ function kbPaint(scroll) {
   if (scroll) el.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
   const open = el.matches('.ib') && el.classList.contains('sel');
   const [enter, space] = el.querySelector('.pc') ? ['', '']   // writing the calling card: keys type, Esc puts it away
-    : el.matches('.ib') ? ['Open', open ? 'Resolved' : '']
+    : el.matches('.ib') ? [open ? 'Close' : 'Open', open ? 'Resolved' : '']
     : el.matches('.ph-post') ? ['Open', 'Got it'] : ['Open', 'Done'];
-  keys.innerHTML = `<span>${UD}${LR}Move</span>${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
+  const into = open && acts(el).length ? `<span>${DN}Buttons</span>` : '';
+  keys.innerHTML = `<span>${UD}${LR}Move</span>${into}${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
   keys.hidden = false;
 }
 document.addEventListener('keydown', ev => {
@@ -1115,19 +1120,22 @@ document.addEventListener('keydown', ev => {
   const el = slots(kb.col)[kb.i];
   const click = x => x?.click();
   const closeChat = () => { if (el?.matches('.ib.sel')) click(el.querySelector('[data-nudge]')); };
-  if (el && kb.act != null && k !== ' ') {   // inside a submenu
+  if (el && kb.act != null && k !== ' ') {   // in a row of buttons
     const list = acts(el);
     if (k === 'ArrowLeft') kb.act = Math.max(0, kb.act - 1);
     else if (k === 'ArrowRight') kb.act = Math.min(list.length - 1, kb.act + 1);
     else if (k === 'Enter') { const b = list[kb.act]; kb.act = null; click(b); }
-    else { kb.act = null; closeChat(); if (k === 'ArrowUp') kb.i--; if (k === 'ArrowDown') kb.i++; }   // Esc, or on to the next item
+    else if (k === 'ArrowDown') { kb.act = null; closeChat(); kb.i++; }   // on to the next item
+    else kb.act = null;                                                   // ↑ or Esc: back up to the bar or the card
     return kbPaint(true);
   }
-  if (k === 'ArrowUp') kb.i--;
-  else if (k === 'ArrowDown') kb.i++;
-  else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+  if (k === 'ArrowUp') { closeChat(); kb.i--; }
+  else if (k === 'ArrowDown') {
+    if (el?.matches('.ib.sel') && acts(el).length) kb.act = 0;   // an open chat: down into its buttons
+    else { closeChat(); kb.i++; }
+  } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
     const col = k === 'ArrowLeft' ? 0 : 1;
-    if (col !== kb.col && slots(col).length) kb = { col, i: 0 };
+    if (col !== kb.col && slots(col).length) { closeChat(); kb = { col, i: 0 }; }
   } else if (k === 'Escape') {
     // back out one step: the postcard, then the open chat, then the cursor itself
     if (document.querySelector('#app .pc')) click(document.querySelector('#app [data-pc-close]'));
@@ -1136,7 +1144,7 @@ document.addEventListener('keydown', ev => {
   } else if (el && k === 'Enter') {
     // the target with one button presses it; with more, and a Waiting On bar, open the submenu of buttons
     if (el.matches('[data-card]')) { if (acts(el).length > 1) kb.act = 0; else click(acts(el)[0]); }
-    else if (el.matches('.ib')) { if (!el.classList.contains('sel')) click(el.querySelector('[data-nudge]')); kb.act = 0; }
+    else if (el.matches('.ib')) click(el.querySelector('[data-nudge]'));   // open or close the chat
     else if (el.matches('a')) click(el);
   } else if (el && k === ' ') {
     if (el.matches('[data-card]')) click(el.querySelector('.stamp'));
