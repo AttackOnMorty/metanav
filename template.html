@@ -44,11 +44,13 @@
   .ib.kb .ib-bar::before { background: var(--blue); transform: translate(5px, 4px); }
   .ph-post.kb { outline: 3px solid var(--blue); outline-offset: 4px; }
   .ph-post.kb .ph-read { background: #fff; color: #000; }
+  .kb-act { outline: 3px solid var(--blue); outline-offset: 3px; }
   .keys { position: fixed; z-index: 60; right: 24px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 16px;
     padding: 8px 18px; background: #000; color: #fff; font: 700 13px/1 var(--sans); transform: skewX(-10deg); box-shadow: 5px 5px 0 var(--red); }
   .keys[hidden] { display: none; }
   .keys > span { display: flex; align-items: center; gap: 7px; transform: skewX(10deg); white-space: nowrap; }
   .keys kbd { min-width: 22px; padding: 3px 6px; background: #fff; color: #000; font: 14px/1 var(--anton); letter-spacing: .02em; text-align: center; }
+  .keys kbd svg { display: block; height: 14px; width: auto; fill: currentColor; }   /* arrows drawn, not from a fallback font */
   @media (max-width: 600px) { .keys { display: none; } }   /* a phone has no keyboard */
   .goto { position: fixed; z-index: 50; right: 28px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); pointer-events: none;
     display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 56px); padding: 6px 18px 6px 8px;
@@ -1058,14 +1060,18 @@ addEventListener('resize', () => { clearTimeout(relock); relock = setTimeout(loc
 document.fonts?.ready.then(lockRows);
 
 // The keyboard, like the game's controller: ↑↓ move the cursor in a column, ←→ switch columns, Enter confirms, Space
-// marks done, Esc backs out, R syncs. The cursor and the prompts show only while the keyboard is in use: the mouse takes
-// over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and Phan-Site.
+// marks done, Esc backs out, R syncs. Confirming the target or a Waiting On bar opens its buttons like the game's submenu:
+// ←→ choose one, Enter presses it, Esc backs out. The cursor and the prompts show only while the keyboard is in use: the
+// mouse takes over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and
+// Phan-Site.
 const keys = Object.assign(document.createElement('div'), { className: 'keys', hidden: true });
 document.body.append(keys);
-let kb = null;   // { col: 0 | 1, i } while the keyboard is in use
+let kb = null;   // { col: 0 | 1, i, act } while the keyboard is in use; act: the chosen button, inside a submenu
+const UD = '<kbd><svg viewBox="0 0 12 16"><path d="M6 0l6 7H0zM6 16L0 9h12z"/></svg></kbd>', LR = '<kbd><svg viewBox="0 0 16 12"><path d="M0 6l7-6v12zM16 6l-7 6V0z"/></svg></kbd>';
+const acts = el => [...el.querySelectorAll(el.matches('.ib') ? '.ib-foot > button, .ib-foot > a' : '.acts > a, .composer-btns > button, .composer-btns > a')];
 const slots = col => [...document.querySelectorAll(col ? '#app .ib, #app .ph-post' : '#app [data-card]:not(.calm), #app .rq[data-i]')];
 function kbPaint(scroll) {
-  document.querySelectorAll('#app .kb').forEach(x => x.classList.remove('kb'));
+  document.querySelectorAll('#app .kb, #app .kb-act').forEach(x => x.classList.remove('kb', 'kb-act'));
   keys.hidden = true;
   if (!kb) return;
   if (!slots(kb.col).length) kb.col = 1 - kb.col;   // a column with nothing in it
@@ -1075,12 +1081,23 @@ function kbPaint(scroll) {
   const el = list[kb.i];
   if (el.matches('.rq')) select(el);   // a request: the game's own red cursor, as on hover
   else { select(null); el.classList.add('kb'); }
+  if (kb.act != null) {   // inside the submenu: the chosen button, and the submenu's own prompts
+    const list = acts(el);
+    kb.act = list.length ? Math.max(0, Math.min(kb.act, list.length - 1)) : null;
+    if (kb.act != null) {
+      list[kb.act].classList.add('kb-act');
+      if (scroll) list[kb.act].scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+      keys.innerHTML = `<span>${LR}Choose</span><span><kbd>⏎</kbd>Select</span><span><kbd>Esc</kbd>Back</span>`;
+      keys.hidden = false;
+      return;
+    }
+  }
   if (scroll) el.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
   const open = el.matches('.ib') && el.classList.contains('sel');
   const [enter, space] = el.querySelector('.pc') ? ['', '']   // writing the calling card: keys type, Esc puts it away
-    : el.matches('.ib') ? (open ? [el.querySelector('[data-pc]') && 'Calling card', 'Resolved'] : ['Open chat', ''])
+    : el.matches('.ib') ? ['Open', open ? 'Resolved' : '']
     : el.matches('.ph-post') ? ['Open', 'Got it'] : ['Open', 'Done'];
-  keys.innerHTML = `<span><kbd>↑↓</kbd><kbd>←→</kbd>Move</span>${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
+  keys.innerHTML = `<span>${UD}${LR}Move</span>${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
   keys.hidden = false;
 }
 document.addEventListener('keydown', ev => {
@@ -1097,6 +1114,15 @@ document.addEventListener('keydown', ev => {
   if (!kb) { kb = { col: 0, i: 0 }; return kbPaint(true); }   // the first key only brings the cursor up
   const el = slots(kb.col)[kb.i];
   const click = x => x?.click();
+  const closeChat = () => { if (el?.matches('.ib.sel')) click(el.querySelector('[data-nudge]')); };
+  if (el && kb.act != null && k !== ' ') {   // inside a submenu
+    const list = acts(el);
+    if (k === 'ArrowLeft') kb.act = Math.max(0, kb.act - 1);
+    else if (k === 'ArrowRight') kb.act = Math.min(list.length - 1, kb.act + 1);
+    else if (k === 'Enter') { const b = list[kb.act]; kb.act = null; click(b); }
+    else { kb.act = null; closeChat(); if (k === 'ArrowUp') kb.i--; if (k === 'ArrowDown') kb.i++; }   // Esc, or on to the next item
+    return kbPaint(true);
+  }
   if (k === 'ArrowUp') kb.i--;
   else if (k === 'ArrowDown') kb.i++;
   else if (k === 'ArrowLeft' || k === 'ArrowRight') {
@@ -1108,14 +1134,15 @@ document.addEventListener('keydown', ev => {
     else if (document.querySelector('#app .ib.sel')) click(document.querySelector('#app .ib.sel [data-nudge]'));
     else { kb = null; select(null); }
   } else if (el && k === 'Enter') {
-    if (el.matches('[data-card]')) click(el.querySelector('a.act'));
-    else if (el.matches('.ib')) click(el.querySelector(el.classList.contains('sel') ? '[data-pc]' : '[data-nudge]'));
+    // the target with one button presses it; with more, and a Waiting On bar, open the submenu of buttons
+    if (el.matches('[data-card]')) { if (acts(el).length > 1) kb.act = 0; else click(acts(el)[0]); }
+    else if (el.matches('.ib')) { if (!el.classList.contains('sel')) click(el.querySelector('[data-nudge]')); kb.act = 0; }
     else if (el.matches('a')) click(el);
   } else if (el && k === ' ') {
     if (el.matches('[data-card]')) click(el.querySelector('.stamp'));
     else if (el.matches('.rq')) click(el.querySelector('.rq-x'));
     else if (el.matches('.ph-post')) click(el.querySelector('[data-read]'));
-    else if (el.matches('.ib')) click(el.querySelector(el.classList.contains('sel') ? '.o-done' : '[data-nudge]'));
+    else if (el.matches('.ib') && el.classList.contains('sel')) { kb.act = null; click(el.querySelector('.o-done')); }
   }
   kbPaint(true);
 });
