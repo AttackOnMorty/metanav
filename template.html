@@ -97,10 +97,14 @@
   /* ---------- header: the field HUD (top-left) + the objective tracker (top-right) ---------- */
   header.top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: start; margin-bottom: 26px; }
   .hud { cursor: default; }
-  /* The game's weekday date: black numbers with a thick white edge and a black rim - the month small and tilted, a slash, the
-     day big - and the weekday on a white tag across the day's foot. (The game's weekend look, a white day and a red weekday,
+  /* The game's weekday date, on its sticker: black numbers with a thick white edge and a black rim - the month small and tilted,
+     a slash, the day big - and the weekday on a white tag across the day's foot. (The game's weekend look, a white day and a red weekday,
      is left out: the panel is for working days.) */
   .hud-date { position: relative; display: inline-flex; align-items: flex-start; padding: 0 58px 30px 4px; }
+  /* the sticker the whole date sits on: black, with a thick white rim */
+  .hud-back { position: absolute; inset: 4px 44px 18px -12px; background: #fff; transform: rotate(-4deg);
+    clip-path: polygon(0 16%, 34% 3%, 58% 10%, 100% 0, 94% 52%, 100% 100%, 62% 90%, 30% 100%, 4% 86%); }
+  .hud-back::after { content: ""; position: absolute; inset: 7px; background: #000; clip-path: inherit; }
   .hud-date .m, .hud-date .d i { color: #000; -webkit-text-stroke: 8px #fff; paint-order: stroke fill;
     filter: drop-shadow(2.5px 0 0 #000) drop-shadow(-2.5px 0 0 #000) drop-shadow(0 2.5px 0 #000) drop-shadow(0 -2.5px 0 #000); }
   .hud-date .m { position: relative; font: 54px/1 var(--anton); transform: rotate(-14deg) translateY(8px); }
@@ -781,7 +785,7 @@ function header(V) {
   const now = V.now;
   return `<header class="top">
     <div class="hud">
-      <div class="hud-date"><span class="m">${now.getMonth() + 1}</span><span class="sl"></span>
+      <div class="hud-date"><span class="hud-back"></span><span class="m">${now.getMonth() + 1}</span><span class="sl"></span>
         <span class="d">${String(now.getDate()).split('').map(x => `<i>${x}</i>`).join('')}</span><span class="wd">${WEEKDAY[now.getDay()]}</span></div>
       <div class="hud-row"><span class="tod ${todFresh(now) ? 'fresh' : ''}">${TOD(now.getHours()).map(s => `<span>${s}</span>`).join('')}</span>${syncPill(V)}</div>
     </div>
