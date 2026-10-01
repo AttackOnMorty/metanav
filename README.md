@@ -36,13 +36,13 @@ A script collects everything in about 25 seconds; then Claude (Opus by default) 
 
 ## Install
 
-Clone it (or your fork) into Claude Code's skills folder, then let Claude Code set it up:
+Paste this into Claude Code (for a fork, use your fork's URL):
 
-```bash
-git clone https://github.com/AttackOnMorty/metanav ~/.claude/skills/metanav
+```
+Install Meta-Nav: clone https://github.com/AttackOnMorty/metanav into ~/.claude/skills/metanav, then follow its INSTALL.md.
 ```
 
-In Claude Code: *"Install Meta-Nav by following ~/.claude/skills/metanav/INSTALL.md"*. It checks what you need, asks for your settings, sets up the two background jobs, and opens a Chrome window for your Microsoft sign-in.
+Claude clones it, checks what you need, asks for your settings, sets up the two background jobs, and opens a Chrome window for your Microsoft sign-in. Then the first run reads your last 30 days, which takes about 8 minutes.
 
 ## Cost
 

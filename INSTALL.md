@@ -4,7 +4,7 @@ Meta-Nav is a Claude Code skill. It builds a live "what should I do now" page fr
 
 Claude: you're reading this because the user asked you to install Meta-Nav. Work through these steps in order. Confirm each one before you move on. Stop and tell the user if anything fails. Below, `<SKILL>` is `~/.claude/skills/metanav` and `<OUT>` is the expanded `output_dir` from `config.json` (`~/metanav` → `/Users/<name>/metanav`).
 
-1. **Check the files.** `<SKILL>/SKILL.md` should exist: the repo has been cloned (or the zip unzipped) there. Read `README.md`, `HOW-IT-WORKS.md` and `SKILL.md` so you know what you're installing.
+1. **Get the files.** If `<SKILL>` doesn't exist yet, clone the repo the user gave you into it: `git clone <url> ~/.claude/skills/metanav`. The folder must be named exactly `metanav`: the skill's command (`/metanav`), its background jobs and the paths in this guide are named after it. If `~/.claude/skills/metanav` already exists and isn't this repo, stop and ask. `<SKILL>/SKILL.md` should then exist. Read `README.md`, `HOW-IT-WORKS.md` and `SKILL.md` so you know what you're installing.
 
 2. **Check prerequisites.** Report anything missing, with the exact fix:
    - The OS is macOS.
