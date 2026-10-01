@@ -187,7 +187,7 @@
 
   /* ---------- queue: the REQUEST list — status stamp · request · client; done requests stay, stamped DONE! ---------- */
   .req { margin-top: 8px; }
-  .rq { position: relative; display: grid; grid-template-columns: 80px minmax(0, 1fr) auto 48px; align-items: center; gap: 12px;
+  .rq { position: relative; display: grid; grid-template-columns: 80px minmax(0, 1fr) auto 64px; align-items: center; gap: 12px;
     min-height: 56px; margin: 0 0 8px var(--x); padding: 6px 16px 6px 6px; color: #fff; transition: transform .14s cubic-bezier(.3,1.7,.5,1); }
   .rq > * { position: relative; z-index: 2; }
   .rq::before { content: ""; position: absolute; inset: 0; z-index: 1; background: #0b0b0b; transform: skewX(-14deg); box-shadow: 6px 6px 0 rgba(0,0,0,.3); }
@@ -221,15 +221,16 @@
   .rq-c { justify-self: center; font: 44px/1 var(--anton); color: #fff; -webkit-text-stroke: 3px #000; paint-order: stroke fill; transform: rotate(-6deg); }
   /* A request's buttons - ✕ drop, ✓ done - show on the row under the mouse, over its difficulty letter, the way a mail list
      swaps a row's date for its buttons. At rest the row reads like the game's list: stamp, title, difficulty. */
-  .rq .rq-acts { position: absolute; z-index: 3; right: 11px; top: 50%; display: flex; align-items: center; gap: 8px;
-    transform: translateY(-50%); opacity: 0; pointer-events: none; transition: opacity .1s; }
+  .rq .rq-acts { position: absolute; z-index: 3; right: 16px; top: 50%; display: flex; align-items: center; gap: 8px;
+    transform: translateY(-50%); opacity: 0; pointer-events: none; transition: opacity .1s; }   /* exactly the letter's 64px cell */
   .rq:hover .rq-acts, .rq .rq-acts:focus-within { opacity: 1; pointer-events: auto; }
   .rq:hover .rq-c { opacity: 0; }
-  .rq-x { width: 30px; height: 30px; padding: 0; border: 2px solid #fff; border-radius: 50%; background: transparent; color: #fff; font-weight: 900; transition: transform .12s; }
+  /* the two are the same circle; only the mark differs, and ✓ - the one used most - sits last */
+  .rq-x, .rq-d { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 2px solid #fff; border-radius: 50%;
+    background: transparent; color: #fff; transition: transform .12s; }
+  .rq-x svg, .rq-d svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
   .rq-x:hover { background: #fff; color: #000; transform: scale(1.15) rotate(-10deg); }
-  .rq-d { display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 2px solid rgba(255,255,255,.6); border-radius: 50%; background: transparent; color: rgba(255,255,255,.75); }
-  .rq-d svg { width: 10px; height: 10px; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
-  .rq-d:hover { border-color: #fff; color: #fff; background: #000; }
+  .rq-d:hover { background: #000; transform: scale(1.15) rotate(-10deg); }
   .card-d { margin-left: auto; align-self: center; display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border: 2px solid #000; background: #fff; color: #000;
     font: 800 13px/1 var(--sans); transform: skewX(-12deg); opacity: .6; }
   .card-d svg { width: 9px; height: 9px; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
@@ -427,7 +428,7 @@
   }
   /* no mouse to hover with: the buttons stay on, in a column of their own */
   @media (hover: none) { .rq .rq-acts { position: static; transform: none; opacity: .8; pointer-events: auto; } .rq:hover .rq-c { opacity: 1; } }
-  @media (hover: none) and (min-width: 601px) { .rq { grid-template-columns: 80px minmax(0, 1fr) auto 48px auto; } }
+  @media (hover: none) and (min-width: 601px) { .rq { grid-template-columns: 80px minmax(0, 1fr) auto 64px auto; } }
   @media (prefers-reduced-motion: reduce) {
     .goto, .sun .rays, .burst, .why.hot, .alert-k, .hud-sync::before, .tod > span, .tod::after, .ib-detail, .ib-msg, .ib-hd, .ib-foot, .ib-quote, .pc { animation: none !important; }
     .intro * { animation: none !important; }
@@ -876,7 +877,7 @@ function queue(V) {
       <span class="rq-b"><span class="rq-t">${e(q.title)}</span>${q.reason ? `<span class="rq-r">${e(q.reason)}</span>` : ''}</span>
       ${q.why ? `<span class="rq-w">${e(q.why)}</span>` : '<span></span>'}
       ${EFFORT[q.effort] ? `<span class="rq-c" aria-label="Effort: ${EFFORT[q.effort]}">${q.effort}</span>` : '<span></span>'}
-      <span class="rq-acts"><button class="rq-d" ${dismissAttrs(q)} title="Drop: not mine, or won't do" aria-label="Drop"><svg viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6"/></svg></button><button class="rq-x" ${doneAttrs(q)} title="Done" aria-label="Mark done">✓</button></span>
+      <span class="rq-acts"><button class="rq-d" ${dismissAttrs(q)} title="Drop: not mine, or won't do" aria-label="Drop"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button><button class="rq-x" ${doneAttrs(q)} title="Done" aria-label="Mark done"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.8 2.8L10 3.5"/></svg></button></span>
     </${tag}>`;
   }).join('');
   const doneRows = done.map((d, j) => {
