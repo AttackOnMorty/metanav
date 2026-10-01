@@ -29,7 +29,7 @@ export function chromePath() {
 // Run a command-line tool. On Windows, npm-installed tools (codex, az) are .cmd files, which Node only starts through
 // the shell - so arguments are quoted for it there. Long text goes in through stdin (`input`), never as an argument.
 export function tool(cmd, args = [], opts = {}) {
-  const o = { encoding: 'utf8', maxBuffer: 64 << 20, ...opts };
+  const o = { encoding: 'utf8', maxBuffer: 64 << 20, windowsHide: true, ...opts };   // windowsHide: no console window flashing up
   if (!WIN) return spawnSync(cmd, args, o);
   const q = a => (/[\s"&|<>^]/.test(a) ? `"${a.replace(/"/g, '""')}"` : a);
   return spawnSync([cmd, ...args].map(q).join(' '), { ...o, shell: true });

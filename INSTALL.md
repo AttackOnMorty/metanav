@@ -11,6 +11,7 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 2. **Check prerequisites.** Report anything missing, with the exact fix:
    - The agent that will judge each run is signed in: `claude` for Claude Code (a short `claude -p "say ok"` answers), or `codex login status` for Codex.
    - `node` (18 or later) and `npm` are on the user's PATH.
+   - **Windows:** Git for Windows is installed — Claude Code on Windows needs its Git Bash. With Codex, note that its sandbox on Windows is still experimental: if the first run's log shows a sandbox error, use Claude Code (`agent: "claude"`).
    - Google Chrome is installed (macOS: in `/Applications`; Windows: under `Program Files` or `%LOCALAPPDATA%`, in `Google\Chrome\Application\chrome.exe`).
    - `gh auth status` succeeds, and its token scopes include `read:project`. If not, the user runs `gh auth refresh -h github.com -s read:project` themselves — it's interactive.
    - Nothing is listening on port 47615. macOS: `lsof -nP -iTCP:47615 -sTCP:LISTEN` prints nothing. Windows: `Get-NetTCPConnection -LocalPort 47615 -State Listen` finds nothing.
@@ -45,7 +46,7 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
    $node = (Get-Command node).Source
    $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
    $service = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$node`" `"$skill\state.mjs`""
-   Register-ScheduledTask -TaskName 'Meta-Nav' -Action $service -Settings $settings -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) -Force
+   Register-ScheduledTask -TaskName 'Meta-Nav' -Action $service -Settings $settings -Trigger (New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:USERNAME") -Force
    Start-ScheduledTask -TaskName 'Meta-Nav'
    ```
    The task runs as the user, with their PATH, so `claude` or `codex`, `gh` and `az` are found as in their terminal.

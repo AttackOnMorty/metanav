@@ -30,6 +30,7 @@ Install Meta-Nav by following https://raw.githubusercontent.com/AttackOnMorty/me
 
 - Keep `~/metanav/index.html` open in a tab. It updates itself.
 - **SYNC NOW** on the page, or `metanav` in a terminal, refreshes now.
+- The keyboard works like a game controller: arrows, Enter, Space for done, X to drop, Esc to back out.
 - Read-only: nothing is sent or marked read, and everything stays on your computer.
 
 How it works: [HOW-IT-WORKS.md](HOW-IT-WORKS.md). Uninstall: end of [INSTALL.md](INSTALL.md).

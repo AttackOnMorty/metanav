@@ -129,6 +129,19 @@ Click a bar to open it:
 
 **Phan-Site: news.** What you'd be glad to have seen today, with nothing to do: decisions and feedback on your projects, team news (leave, new starters), a social plan, a new issue about your work that isn't yours. Each post is tagged `NEW` or `UPDATE`. **Got it** hides a post; it comes back only if something new happens on it.
 
+**Keyboard.** The page works like the game's controller. The first key brings up a cursor and, in the corner, prompts for what each key does there; moving the mouse puts them away.
+
+| Key | Does |
+| --- | --- |
+| ↑ ↓ | Move in a column: the target and Requests on the left, Waiting On and Phan-Site on the right |
+| ← → | Switch columns |
+| Enter | Open: a request's link, or a Waiting On chat. On the target, step into its buttons |
+| ↓ on an open chat | Step into its buttons (Send calling card, Resolved, Open); ← → choose, Enter presses |
+| Space | Done (Resolved on an open chat, Got it on Phan-Site) |
+| X | Drop |
+| Esc | Back out one step |
+| R | SYNC NOW |
+
 ## 6. Your clicks
 
 - **What gets saved.** ✓ (done), Resolved and Got it are saved by the same background service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your computer sees the same clicks.

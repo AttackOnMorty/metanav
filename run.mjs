@@ -51,7 +51,7 @@ const TODAY_PROJECT = (config.schedule || {})[now.toLocaleDateString('en-US', { 
 const DIR = join(OUT, '.inputs');
 mkdirSync(DIR, { recursive: true });
 const INPUTS = join(DIR, 'inputs.json'), BRIEF = join(DIR, 'brief.json');
-const collect = spawnSync(process.execPath, [join(SKILL, 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3 });
+const collect = spawnSync(process.execPath, [join(SKILL, 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3, windowsHide: true });
 const collected = `${collect.stdout || ''}${collect.stderr || ''}`.trim();
 
 // Judge. The agent reads the inputs, the previous result, the user's clicks and the config, follows JUDGE.md,
