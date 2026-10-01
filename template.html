@@ -826,6 +826,7 @@ function card(V) {
 // Requests = the game's REQUEST list: a status stamp, the request, who asked. Done requests stay at the bottom, stamped DONE!
 function stampOf(q) {
   const f = flagOf(q);
+  if (q.moved) return '<span class="st upd">MOVED</span>';   // the same matter, over from Waiting On
   if (f === '新') return '<span class="st new">' + 'NEW!'.split('').map(c => `<i>${c}</i>`).join('') + '</span>';
   if (f === '更新') return '<span class="st upd">UPDATE</span>';
   if (q.urgency === 'high') return '<span class="st hot">URGENT</span>';
@@ -893,8 +894,9 @@ function targets(V) {
   const rows = items.map((w, i) => {
     const k = keyOf(w), open = openNudge === k;
     const who = names(w.who), off = names(w.not_waiting), n = quietDays(w), f = flagOf(w);
-    // one status over the name, as in the game - the most pressing of CHASE (time to nudge), NEW, UPDATE - and the days beside it
-    const status = w.nudge_now ? '<span class="tg hot">CHASE</span>' : f === '新' ? '<span class="tg new">NEW</span>' : f === '更新' ? '<span class="tg">UPDATE</span>' : '';
+    // one status over the name, as in the game - the most pressing of CHASE (time to nudge), MOVED (over from Requests), NEW,
+    // UPDATE - and the days beside it
+    const status = w.nudge_now ? '<span class="tg hot">CHASE</span>' : w.moved ? '<span class="tg">MOVED</span>' : f === '新' ? '<span class="tg new">NEW</span>' : f === '更新' ? '<span class="tg">UPDATE</span>' : '';
     const tags = `${status}<span class="tg day">${n ? `${n}<small>d</small>` : 'TODAY'}</span>`;
     const thread = [...(w.thread || [])].sort((a, b) => String(a.at || '').localeCompare(String(b.at || '')));
     const speakers = [...new Set(thread.filter(m => m.from !== 'ME').map(m => String(m.from).toLowerCase()))], bar = [...who, ...off];

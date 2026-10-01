@@ -111,7 +111,7 @@ Six principles decide everything in this step; what follows is how they apply.
 Each `queue` and `waiting` item from `PREV`, under the principles:
 - **Closed** (principle 3) → a one-liner in `done` (`"Sam reviewed and merged Api #80"`, `when`, `url`, `at`). **One thing, one `done` row**: stages of the same work (approved → merged) collapse into the latest.
 - **Still open, but something happened on it** (the user nudged again, a reply that doesn't close it) → keep the same `id`, set `last_activity` to that newest message's time, update `quote`, and keep everyone involved on it: those who still owe it in `who`, those who no longer do in `not_waiting`. `render.py` flags it updated.
-- **Still open** → keep its `id` / `url`, re-judged: whose it is, which list, its rank and wording.
+- **Still open** → keep its `id` / `url`, re-judged: whose it is, which list, its rank and wording. A matter that changes lists — passed back to the user, or now waiting on someone — keeps its `id`: the panel marks it MOVED.
 
 Keep `done` rows from `PREV` that closed today (local time, by `at`) — the panel shows today's only — and `highlights` under 24 hours old, re-judged the same way; a `done` row for an item the user ticked carries that item's `id`.
 

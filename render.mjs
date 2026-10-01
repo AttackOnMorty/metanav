@@ -74,10 +74,15 @@ export function renderBrief(briefFile, inputsFile) {
   brief.first_run = !previous.length;   // nothing to diff against: the page skips "since last run"
   if (previous.length) {
     const prev = JSON.parse(readFileSync(join(RUNS, previous.at(-1)), 'utf8'));
+    // Moved: the same matter changed sides - it was on the other list last run (passed back to the user, or now
+    // waiting on someone). Not new: the page says MOVED, so it doesn't look like it came from nowhere.
+    const other = { queue: 'waiting', waiting: 'queue' };
     for (const section of TRACKED) {
       const seen = new Set((prev[section] || []).map(key));
+      const there = new Set((prev[other[section]] || []).map(key));
       for (const item of brief[section] || []) {
-        item.new = !seen.has(key(item));
+        item.moved = !seen.has(key(item)) && there.has(key(item));
+        item.new = !seen.has(key(item)) && !item.moved;
         // Already on the panel, but something happened on it since (a nudge, a reply that didn't close it).
         // Without this, an item that moved looks exactly like one that didn't.
         item.updated = !item.new && (item.last_activity || '') > (prev.generated_at || '');
