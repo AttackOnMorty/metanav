@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>local.metanav-state</string>
+  <!-- the panel's click store (state.py): up from login, restarted if it ever stops.
+       Started through /bin/zsh, like run.sh. The trailing `exit` keeps zsh from exec-ing python. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-c</string>
+    <string>/usr/bin/python3 __HOME__/.claude/skills/metanav/state.py; exit $?</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>__OUT__/logs/state.log</string>
+  <key>StandardErrorPath</key>
+  <string>__OUT__/logs/state.log</string>
+</dict>
+</plist>

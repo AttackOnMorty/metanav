@@ -1,0 +1,9 @@
+{
+  "name": "metanav-collector",
+  "private": true,
+  "type": "module",
+  "description": "collect.mjs drives the installed Google Chrome; `npm install` here once",
+  "dependencies": {
+    "playwright-core": "1.63.0"
+  }
+}
