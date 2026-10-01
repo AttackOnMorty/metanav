@@ -38,6 +38,18 @@
   @keyframes spin { to { transform: rotate(360deg); } }
 
   /* where a link goes, on hover — the game's button prompt, in its corner: bottom right, clear of the content */
+  /* keyboard: the cursor, and the game's button prompts in the corner (only while the keyboard is in use) */
+  .card.kb { outline: 4px solid var(--blue); outline-offset: 7px; }
+  .ib.kb .ib-bar::after { background: var(--red); }
+  .ib.kb .ib-bar::before { background: var(--blue); transform: translate(5px, 4px); }
+  .ph-post.kb { outline: 3px solid var(--blue); outline-offset: 4px; }
+  .ph-post.kb .ph-read { background: #fff; color: #000; }
+  .keys { position: fixed; z-index: 60; right: 24px; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); display: flex; gap: 16px;
+    padding: 8px 18px; background: #000; color: #fff; font: 700 13px/1 var(--sans); transform: skewX(-10deg); box-shadow: 5px 5px 0 var(--red); }
+  .keys[hidden] { display: none; }
+  .keys > span { display: flex; align-items: center; gap: 7px; transform: skewX(10deg); white-space: nowrap; }
+  .keys kbd { min-width: 22px; padding: 3px 6px; background: #fff; color: #000; font: 14px/1 var(--anton); letter-spacing: .02em; text-align: center; }
+  @media (max-width: 600px) { .keys { display: none; } }   /* a phone has no keyboard */
   .goto { position: fixed; z-index: 50; right: 28px; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); pointer-events: none;
     display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 56px); padding: 6px 18px 6px 8px;
     background: #000; color: #fff; font: 900 15px/1.5 var(--sans); letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
@@ -994,6 +1006,7 @@ function render() {
   placeSun();
   fitAll();
   lockRows();
+  kbPaint(false);
 }
 
 // Got it: the post slides away (no MISSION CLEAR — nothing was done) and is remembered with its activity time.
@@ -1043,6 +1056,72 @@ function lockRows() {
 let relock = 0;
 addEventListener('resize', () => { clearTimeout(relock); relock = setTimeout(lockRows, 150); });
 document.fonts?.ready.then(lockRows);
+
+// The keyboard, like the game's controller: ↑↓ move the cursor in a column, ←→ switch columns, Enter confirms, Space
+// marks done, Esc backs out, R syncs. The cursor and the prompts show only while the keyboard is in use: the mouse takes
+// over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and Phan-Site.
+const keys = Object.assign(document.createElement('div'), { className: 'keys', hidden: true });
+document.body.append(keys);
+let kb = null;   // { col: 0 | 1, i } while the keyboard is in use
+const slots = col => [...document.querySelectorAll(col ? '#app .ib, #app .ph-post' : '#app [data-card]:not(.calm), #app .rq[data-i]')];
+function kbPaint(scroll) {
+  document.querySelectorAll('#app .kb').forEach(x => x.classList.remove('kb'));
+  keys.hidden = true;
+  if (!kb) return;
+  if (!slots(kb.col).length) kb.col = 1 - kb.col;   // a column with nothing in it
+  const list = slots(kb.col);
+  if (!list.length) return;
+  kb.i = Math.max(0, Math.min(kb.i, list.length - 1));
+  const el = list[kb.i];
+  if (el.matches('.rq')) select(el);   // a request: the game's own red cursor, as on hover
+  else { select(null); el.classList.add('kb'); }
+  if (scroll) el.scrollIntoView({ block: 'nearest', behavior: reduced ? 'auto' : 'smooth' });
+  const open = el.matches('.ib') && el.classList.contains('sel');
+  const [enter, space] = el.querySelector('.pc') ? ['', '']   // writing the calling card: keys type, Esc puts it away
+    : el.matches('.ib') ? (open ? [el.querySelector('[data-pc]') && 'Calling card', 'Resolved'] : ['Open chat', ''])
+    : el.matches('.ph-post') ? ['Open', 'Got it'] : ['Open', 'Done'];
+  keys.innerHTML = `<span><kbd>↑↓</kbd><kbd>←→</kbd>Move</span>${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
+  keys.hidden = false;
+}
+document.addEventListener('keydown', ev => {
+  if (ev.metaKey || ev.ctrlKey || ev.altKey) return;   // the browser's own shortcuts
+  if (ev.target.closest?.('textarea, input')) {         // typing a nudge: Esc leaves the box, every other key types
+    if (ev.key === 'Escape') ev.target.blur();
+    return;
+  }
+  const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape', 'r'].includes(k)) return;
+  ev.preventDefault();
+  hideGo();
+  if (k === 'r') return document.querySelector('#app [data-refresh]:not([disabled])')?.click();
+  if (!kb) { kb = { col: 0, i: 0 }; return kbPaint(true); }   // the first key only brings the cursor up
+  const el = slots(kb.col)[kb.i];
+  const click = x => x?.click();
+  if (k === 'ArrowUp') kb.i--;
+  else if (k === 'ArrowDown') kb.i++;
+  else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+    const col = k === 'ArrowLeft' ? 0 : 1;
+    if (col !== kb.col && slots(col).length) kb = { col, i: 0 };
+  } else if (k === 'Escape') {
+    // back out one step: the postcard, then the open chat, then the cursor itself
+    if (document.querySelector('#app .pc')) click(document.querySelector('#app [data-pc-close]'));
+    else if (document.querySelector('#app .ib.sel')) click(document.querySelector('#app .ib.sel [data-nudge]'));
+    else { kb = null; select(null); }
+  } else if (el && k === 'Enter') {
+    if (el.matches('[data-card]')) click(el.querySelector('a.act'));
+    else if (el.matches('.ib')) click(el.querySelector(el.classList.contains('sel') ? '[data-pc]' : '[data-nudge]'));
+    else if (el.matches('a')) click(el);
+  } else if (el && k === ' ') {
+    if (el.matches('[data-card]')) click(el.querySelector('.stamp'));
+    else if (el.matches('.rq')) click(el.querySelector('.rq-x'));
+    else if (el.matches('.ph-post')) click(el.querySelector('[data-read]'));
+    else if (el.matches('.ib')) click(el.querySelector(el.classList.contains('sel') ? '.o-done' : '[data-nudge]'));
+  }
+  kbPaint(true);
+});
+document.addEventListener('mousemove', ev => {
+  if (kb && Math.abs(ev.movementX) + Math.abs(ev.movementY) > 2) { kb = null; kbPaint(false); }
+});
 
 // Send calling card brings the postcard out of the open bar; its Cancel puts it away. Opening another bar starts without it.
 document.addEventListener('click', ev => {
