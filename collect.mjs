@@ -111,6 +111,8 @@ async function readFolder(page, url) {
   // Outlook draws its own page first and only then goes to the sign-in page when the session has passed the
   // organisation's sign-in age - so look again once the list has had its chance, or that reads as an empty folder
   if (!await signedIn(page)) return null;
+  // that sign-in pass may have reloaded the page: let the list draw again
+  await page.waitForSelector('[role=listbox] [role=option]', { timeout: 15000 }).catch(() => {});
   await sleep(800);
   const rows = await page.evaluate(ROWS(SINCE));
   const invites = rows.filter(isMeeting).map(r => r.convid);
@@ -146,6 +148,8 @@ async function outlook(page, prev) {
     await page.waitForFunction(() => [...document.querySelectorAll('[aria-label]')]
       .some(e => / to \d{1,2}:\d{2} [AP]M|all day/i.test(e.getAttribute('aria-label') || '')), null, { timeout: 8000 }).catch(() => {});
     if (!await signedIn(page)) { mail.signin_needed = true; return []; }   // as for the folders
+    await page.waitForFunction(() => [...document.querySelectorAll('[aria-label]')]
+      .some(e => / to \d{1,2}:\d{2} [AP]M|all day/i.test(e.getAttribute('aria-label') || '')), null, { timeout: 8000 }).catch(() => {});
     return page.evaluate(CALENDAR);
   });
   return mail;
