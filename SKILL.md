@@ -5,7 +5,7 @@ description: Refresh Meta-Nav, the user's live work panel - built from Outlook m
 
 # Meta-Nav
 
-The panel refreshes itself: `run.mjs`, beside this file, runs on the hour on weekdays. It collects, has an agent judge with `JUDGE.md`, and renders the page. Don't judge anything yourself here. `output_dir` is in `config.json` beside this file (`~/metanav` by default).
+The panel refreshes itself: `run.mjs`, beside this file, runs on the hour on weekdays. It collects, has an agent judge with `JUDGE.md`, and renders the page. Don't judge anything yourself here. Its output folder is `~/metanav` (`output_dir` in `config.json` beside this file, if set).
 
 **A refresh now** (the user asks for one, or runs `/metanav`):
 1. Start a run, the same as the panel's SYNC NOW: POST `{}` to `http://127.0.0.1:47615/refresh` — `curl -s -X POST -d '{}' http://127.0.0.1:47615/refresh` on macOS, `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/refresh -Body '{}'` on Windows. If nothing answers, create `<output_dir>/.manual` and run `node run.mjs` from this folder instead.

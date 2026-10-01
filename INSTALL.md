@@ -4,7 +4,7 @@ Meta-Nav is a skill for Claude Code or Codex, on macOS or Windows. It builds a l
 
 You're reading this because the user asked you to install Meta-Nav. Work through these steps in order. Confirm each one before you move on. Stop and tell the user if anything fails. Where a step differs, follow the **macOS** or the **Windows** part, whichever the user is on (on Windows, run the commands in PowerShell).
 
-Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/skills/metanav` if you are Claude Code, `~/.agents/skills/metanav` if you are Codex (on Windows, `~` is `%USERPROFILE%`) — and `<OUT>` is the expanded `output_dir` from `config.json` (`~/metanav` → `/Users/<name>/metanav`, or `C:\Users\<name>\metanav`). Use full paths everywhere below: background jobs don't expand `~`.
+Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/skills/metanav` if you are Claude Code, `~/.agents/skills/metanav` if you are Codex (on Windows, `~` is `%USERPROFILE%`) — and `<OUT>` is the output folder, `~/metanav` expanded (`/Users/<name>/metanav`, or `C:\Users\<name>\metanav`). Use full paths everywhere below: background jobs don't expand `~`.
 
 1. **Get the files.** If `<SKILL>` doesn't exist yet, clone the repo this file came from into it — for `https://raw.githubusercontent.com/<owner>/metanav/main/INSTALL.md` that's `git clone https://github.com/<owner>/metanav <SKILL>`. The folder must be named exactly `metanav`: the skill, its background jobs and the paths in this guide are named after it. If `<SKILL>` already exists and isn't this repo, stop and ask. `<SKILL>/SKILL.md` should then exist. Read `README.md`, `HOW-IT-WORKS.md` and `SKILL.md` so you know what you're installing.
 
@@ -21,17 +21,13 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 
 4. **Write `config.json`.** Copy `config.example.json` to `config.json` and ask the user for each value:
    - `user.name`, and `user.short_name`, which is how the user appears in chats.
-   - `projects`: the projects the user cares about. News about them counts as "worth knowing".
    - `github_owner`: the GitHub org the user's work lives in.
    - `mail.received_folders`: Inbox (already filled in), plus every Inbox subfolder the user's rules file work mail into. For each subfolder, ask the user to open it in Outlook on the web and paste the address bar's URL; use the folder name exactly as Outlook shows it.
-   - `mail.skipped_folders`: notification folders that are never read, like `GitHub`.
    - `teams.skip_chats`: bot or reminder chats to skip, by their name in Teams (e.g. `Workflows`).
-   - `calendar.skip_events`: personal calendar blocks that aren't meetings, like "Lunch".
    - `hours`: when scheduled runs happen, weekdays, on the hour. The default is 9 to 18.
    - `agent`: `"claude"` if you are Claude Code, `"codex"` if you are Codex — the agent each run calls to judge.
    - `judge_model`: for Claude, `"opus"` (`"sonnet"` is cheaper and faster but follows the rules less reliably). For Codex, leave it `""` for Codex's default model, or name one.
-   - `ado`: leave it `null` unless the user's work is (also) in Azure DevOps. If it is, set it to `{ "base_url": "https://dev.azure.com/<org>" }`: Meta-Nav then reads their work items, reviews, pull requests and @mentions across that organisation. To also watch one release pipeline, make it `https://dev.azure.com/<org>/<project>` and add `"release_definition": <id>`. Then check `az` is installed and signed in to that organisation's account (`az account show`).
-   - Keep `output_dir` (`~/metanav`) and `lookback_days` (30) unless the user says otherwise.
+   - `ado`: leave it `null` unless the user's work is (also) in Azure DevOps. If it is, set it to `true`: Meta-Nav then reads their work items, reviews, pull requests and @mentions in every organisation their account belongs to. Then check `az` is installed and signed in with that account (`az account show`).
 
 5. **Set up the background service** (`state.mjs`): it starts a run on the hour, and keeps the panel's clicks. Create `<OUT>/logs` first.
 
@@ -65,7 +61,7 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 
 8. **Finish.** Summarise what was installed and where. Remind the user:
    - SYNC NOW on the panel, or `metanav` in a new terminal, refreshes on demand;
-   - TACTICS on the panel takes what only they know, a sentence each — which days belong to which project, whose asks come first — and every run ranks by it;
+   - TACTICS on the panel takes what only they know, a sentence each — their projects, which days belong to which, whose asks come first, calendar blocks that aren't meetings — and every run judges by it;
    - what a run costs (README, "Cost");
    - `HOW-IT-WORKS.md` explains what the page shows and how it ranks;
    - how to uninstall (the end of this file).

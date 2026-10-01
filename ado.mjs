@@ -1,6 +1,6 @@
 // Azure DevOps for Meta-Nav, read the way GitHub is: the work assigned to you that's under way, pull requests waiting
-// on your review, your own pull requests' next step, and where someone @mentioned you - across the whole organisation.
-// Optionally the latest release of one pipeline. Deterministic, no judgement; the shapes match GitHub's.
+// on your review, your own pull requests' next step, and where someone @mentioned you - in every organisation your
+// account belongs to. Deterministic, no judgement; the shapes match GitHub's.
 import { ado, config } from './common.mjs';
 
 const V = 'api-version=7.1';
@@ -11,9 +11,25 @@ const daysSince = t => Math.floor((Date.now() - Date.parse(t)) / 864e5);
 const name = u => u?.displayName?.replace(/\s*\[[^\]]*\]$/, '') || null;   // "Sam Lee [Acme]" -> "Sam Lee"
 
 export async function fromAdo(SINCE, LOOKBACK) {
-  const m = (config.ado?.base_url || '').match(/^(https:\/\/dev\.azure\.com\/[^/]+)(?:\/([^/?#]+))?/);
-  if (!m) return { ok: true, skipped: true };
-  const [, ORG, PROJECT] = m;
+  if (!config.ado) return { ok: true, skipped: true };
+  // every organisation the signed-in account is a member of; one that can't be read doesn't hold up the others
+  const profile = await ado('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1');
+  const orgs = ((await ado(`https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.1`)).value || [])
+    .map(a => `https://dev.azure.com/${a.accountName}`);
+  const out = { ok: true, me: profile.displayName || null, orgs: [], review_requests: [], work: [], mentions: [], errors: [] };
+  for (const ORG of orgs) {
+    try {
+      const r = await fromOrg(ORG, SINCE, LOOKBACK);
+      out.orgs.push(ORG);
+      for (const k of ['review_requests', 'work', 'mentions']) out[k].push(...r[k]);
+    } catch (e) { out.errors.push(`${ORG}: ${String(e.message || e).slice(0, 200)}`); }
+  }
+  if (orgs.length && !out.orgs.length) throw new Error(out.errors[0]);
+  if (!out.errors.length) delete out.errors;
+  return out;
+}
+
+async function fromOrg(ORG, SINCE, LOOKBACK) {
   const me = (await ado(`${ORG}/_apis/connectionData?api-version=7.1-preview`)).authenticatedUser;
   const isMe = u => u && (u.id === me.id || u.uniqueName === me.properties?.Account?.$value);
   const wiql = async q => ((await ado(`${ORG}/_apis/wit/wiql?${V}`, { query: q })).workItems || []).map(w => w.id);
@@ -145,19 +161,7 @@ export async function fromAdo(SINCE, LOOKBACK) {
     });
   }
   pbis.forEach(b => b.comments.forEach(c => delete c.me));
-
-  // The latest release of one pipeline, when config.ado names one
-  let release;
-  if (PROJECT && config.ado.release_definition) {
-    const rm = `https://vsrm.dev.azure.com/${ORG.split('/').pop()}/${PROJECT}/_apis/release/releases`;
-    const id = (await ado(`${rm}?definitionId=${config.ado.release_definition}&$top=1&${V}`)).value?.[0]?.id;
-    if (id) {
-      const r = await ado(`${rm}/${id}?${V}`);
-      release = { name: r.name, created: r.createdOn, stages: (r.environments || []).map(e => ({ name: e.name, status: e.status })),
-        url: `${ORG}/${PROJECT}/_releaseProgress?_a=release-pipeline-progress&releaseId=${id}`, is_new: r.createdOn >= SINCE };
-    }
-  }
-  return { ok: true, me: me.providerDisplayName || null, review_requests, work, mentions, ...(release && { release }) };
+  return { review_requests, work, mentions };
 }
 
 // Current state of Azure DevOps work items and PRs a carried-over item points at, by URL - so the run can tell a merged

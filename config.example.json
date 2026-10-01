@@ -3,10 +3,6 @@
     "name": "Jane Doe",
     "short_name": "Jane"
   },
-  "projects": [
-    "Project A",
-    "Project B"
-  ],
   "github_owner": "your-github-org",
   "ado": null,
   "mail": {
@@ -15,29 +11,17 @@
         "name": "Inbox",
         "url": "https://outlook.office.com/mail/inbox"
       }
-    ],
-    "skipped_folders": [
-      "GitHub"
-    ],
-    "sent": "https://outlook.office.com/mail/sentitems",
-    "deleted": "https://outlook.office.com/mail/deleteditems"
+    ]
   },
   "teams": {
     "skip_chats": [
       "Workflows"
     ]
   },
-  "calendar": {
-    "skip_events": [
-      "Lunch"
-    ]
-  },
   "hours": {
     "start": 9,
     "end": 18
   },
-  "output_dir": "~/metanav",
-  "lookback_days": 30,
   "agent": "claude",
   "judge_model": "opus"
 }

@@ -25,7 +25,7 @@ This document follows one refresh from start to finish, then explains each part 
 - **On a schedule.** Meta-Nav's background service (`state.mjs`, started at login by launchd on macOS or Task Scheduler on Windows) starts a run on the hour. `run.mjs` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If the computer was asleep on the hour, the run starts as soon as it wakes.
 - **On demand, at any hour.** Use the **SYNC NOW** button on the page, or type `metanav` in a terminal.
 - **One at a time.** A lock stops two runs overlapping. While a run works, the page shows **Syncing**.
-- **Incremental.** Each run starts from the previous run's judgement. It re-checks everything that was still open, and reads only what's new since the last run. The very first run reads the last 30 days (`lookback_days`), so an ask nobody answered three weeks ago still turns up.
+- **Incremental.** Each run starts from the previous run's judgement. It re-checks everything that was still open, and reads only what's new since the last run. The very first run reads the last 30 days, so an ask nobody answered three weeks ago still turns up.
 - **The page updates itself.** Leave the tab open. Every minute the page checks a small `stamp.js` file and reloads only when a run has written something new.
 
 ## 2. Collecting the data (no AI involved)
@@ -38,7 +38,7 @@ This document follows one refresh from start to finish, then explains each part 
 | **Outlook calendar** | Today's day view: each meeting's title and time. | Cancelled and declined meetings, other people's leave, and the personal blocks you list are dropped. |
 | **Teams** | Teams on the web keeps recent chats in its own browser cache. Meta-Nav reads that cache: direct chats, group chats and meeting chats with something new since the last run. Where you took part, it also takes the last 30 days of history for context. | No API calls and no chat opened, so nothing is marked read. Channels aren't read. Bot and reminder chats you list are skipped. |
 | **GitHub** (`gh`) | PRs waiting for your review, with their size and how long they've waited. Your open PRs: review state, CI, unresolved threads and new feedback. Your issues on the current sprint board, with body, comments, assignees, sprint end and when they were assigned to you. Where someone @mentioned you, and whether you've answered. The current state of any PR or issue the panel is already tracking. | Nothing is written to GitHub. |
-| **Azure DevOps** (optional, `az`) | The same as GitHub, across your organisation: work items assigned to you that are under way, pull requests waiting on your review, your own PRs' votes, comments, build checks and conflicts, and work item discussions that @mention you. Optionally the latest release of one pipeline, stage by stage. | Nothing is written to Azure DevOps. A mention in a PR comment arrives as notification mail instead. |
+| **Azure DevOps** (optional, `az`) | The same as GitHub, in every organisation you belong to: work items assigned to you that are under way, pull requests waiting on your review, your own PRs' votes, comments, build checks and conflicts, and work item discussions that @mention you. | Nothing is written to Azure DevOps. A mention in a PR comment arrives as notification mail instead. |
 
 If Microsoft asks you to sign in again, that source is marked failed and the page shows a red banner with a **SIGN IN** button (section 5).
 

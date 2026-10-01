@@ -11,6 +11,7 @@ export const SKILL = dirname(fileURLToPath(import.meta.url));
 export const CONFIG = join(SKILL, 'config.json');
 export const config = JSON.parse(readFileSync(CONFIG, 'utf8'));
 export const OUT = (config.output_dir || '~/metanav').replace(/^~(?=$|[\\/])/, homedir());
+export const SENT = 'https://outlook.office.com/mail/sentitems';   // the same for everyone
 export const WIN = process.platform === 'win32';
 
 // The runs' own browser profile, named after the output dir, in this OS's cache folder

@@ -9,7 +9,7 @@
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PROFILE, SKILL as HERE, config, graphql } from './common.mjs';
+import { PROFILE, SENT, SKILL as HERE, config, graphql } from './common.mjs';
 import { adoStates } from './ado.mjs';
 import { fetchAll } from './fetch.mjs';
 
@@ -102,7 +102,7 @@ async function readFolder(page, url) {
 async function outlook(page, prev) {
   const mail = { signin_needed: false, folders: {}, calendar: [] };
   const received = config.mail.received_folders;
-  for (const f of [...received, { name: 'Sent', url: config.mail.sent }]) {
+  for (const f of [...received, { name: 'Sent', url: SENT }]) {
     const rows = await timed(`Outlook ${f.name}`, () => readFolder(page, f.url));
     if (rows === null) { mail.signin_needed = true; return mail; }
     mail.folders[f.name] = rows;

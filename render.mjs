@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OUT, SKILL, WIN, config, tool } from './common.mjs';
+import { OUT, SENT, SKILL, WIN, config, tool } from './common.mjs';
 
 // Sections whose items get a "+NEW" flag when they weren't in the previous run ("done": closed since the last run)
 const TRACKED = ['queue', 'waiting', 'highlights', 'done'];
@@ -19,7 +19,7 @@ const RUNS = join(OUT, 'runs');
 // Outlook folder paths -> names, so the panel can say which folder a mail link opens (only Inbox mail opens itself)
 const mail = config.mail || {};
 const path = u => { try { return new URL(u).pathname.replace(/\/$/, ''); } catch { return ''; } };
-const MAIL_FOLDERS = Object.fromEntries([...(mail.received_folders || []).map(f => [f.name, f.url]), ['Sent', mail.sent], ['Deleted', mail.deleted]]
+const MAIL_FOLDERS = Object.fromEntries([...(mail.received_folders || []).map(f => [f.name, f.url]), ['Sent', SENT]]
   .filter(([, u]) => u).map(([n, u]) => [path(u), n]));
 
 const runFiles = () => { mkdirSync(RUNS, { recursive: true }); return readdirSync(RUNS).filter(f => f.endsWith('.json')).sort(); };
