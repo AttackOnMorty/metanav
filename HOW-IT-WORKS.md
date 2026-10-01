@@ -114,9 +114,9 @@ The page doesn't show these. When the order looks wrong, they tell you which rul
 - **A status on the left**, in this order of preference: `NEW!` (appeared since the last run), `UPDATE` (something happened on it), `URGENT`, `DEADLINE`. Otherwise, how long it has been yours, as `3d` or `TODAY`.
 - **The title**, with one line of reason under it. Hover over a row to read both in full.
 - **A short tag saying why it's ranked there**, such as "Alex is blocked" or "Sprint ends 13/10".
-- **The difficulty letter**, and a ✓ to mark it done. The ⊘ that appears in a row's corner dismisses it instead: not yours, or not going to happen (the target card has a Dismiss button).
+- **The difficulty letter**, and a ✓ to mark it done. The DROP tag that appears on a row's corner drops it instead: not yours, or not going to happen (the target card has a Drop button).
 
-At the bottom, today's finished items stay as grey `DONE!` rows with their difficulty letter, and dismissed ones as `DROPPED`. A row you ticked yourself keeps **UNDO**. When the next run confirms what happened, it adds a note under your tick.
+At the bottom, today's finished items stay as grey `DONE!` rows with their difficulty letter, and dropped ones as `DROPPED`. A row you ticked yourself keeps **UNDO**. When the next run confirms what happened, it adds a note under your tick.
 
 **Waiting On: your messages.** It's laid out like the game's IM inbox: one bar per matter and the people who owe it. Names shown dimmed have already delivered. Above each bar, its status and how long it has been quiet:
 - `CHASE`: time to nudge them, because it blocks you or has gone quiet long enough;
@@ -133,7 +133,7 @@ Click a bar to open it:
 
 - **What gets saved.** ✓ (done), Resolved and Got it are saved by the same background service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your computer sees the same clicks.
 - **Ticked means closed.** The next run treats a ticked item as closed. If something new happens on it later, it comes back.
-- **Dismissed means closed by your decision.** The run won't bring it back from the same messages, and writes no done row for it. If you only disagree with how it was read ("you can test it tomorrow"), reply in the conversation instead: the next run follows the reply.
+- **Dropped means closed by your decision.** The run won't bring it back from the same messages, and writes no done row for it. If you only disagree with how it was read ("you can test it tomorrow"), reply in the conversation instead: the next run follows the reply.
 - **Deleting received mail counts as done.** Archiving it does too.
 
 ## 7. Privacy and files

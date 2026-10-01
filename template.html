@@ -222,11 +222,10 @@
   .rq-x { width: 30px; height: 30px; padding: 0; border: 2px solid #fff; border-radius: 50%; background: transparent; color: #fff; font-weight: 900; opacity: .35; transition: opacity .1s, transform .12s; }
   .rq.sel .rq-x, .rq:hover .rq-x, .rq-x:focus-visible { opacity: 1; }
   .rq-x:hover { background: #000; border-color: #000; transform: scale(1.15) rotate(-10deg); }
-  /* dismiss: not mine / won't do. A small corner ⊘ - a circle like ✓'s, slashed - that shows on the row under the cursor,
-     so it takes no room from titles */
-  .rq .rq-d { position: absolute; z-index: 3; top: -9px; right: 14px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
-    border: 2px solid #fff; border-radius: 50%; background: #000; color: #fff; opacity: 0; transition: opacity .1s; }
-  .rq .rq-d svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  /* Drop: not mine / won't do - the row then reads DROPPED. A small DROP tag on the row's corner that shows on the row under
+     the cursor, so it takes no room from titles */
+  .rq .rq-d { position: absolute; z-index: 3; top: -10px; right: 16px; padding: 1px 8px; border: 2px solid #fff; background: #000; color: #fff;
+    font: 13px/1.2 var(--anton); letter-spacing: .06em; transform: skewX(-12deg); opacity: 0; transition: opacity .1s; }
   .rq.sel .rq-d, .rq:hover .rq-d, .rq .rq-d:focus-visible { opacity: 1; }
   .rq .rq-d:hover { background: var(--red); }
   .card-d { margin-left: auto; padding: 2px 10px; border: 2px solid #000; background: #fff; color: #000; font: 800 12px/1.2 var(--sans); transform: skewX(-12deg); opacity: .55; }
@@ -834,7 +833,7 @@ function card(V) {
   return `<article class="card" data-card>${EFFORT[t.effort] ? `<span class="no eff" aria-label="Effort: ${EFFORT[t.effort]}">${t.effort}</span>` : ''}
     <div class="card-kicker"><span class="ribbon">TARGET · DO THIS NOW</span>${flagHtml(flagOf(t))}
       ${t.why ? `<span class="why ${t.urgency === 'high' ? 'hot' : ''}">${e(t.why)}</span>` : ''}
-      <button class="card-d" ${dismissAttrs(t)} title="Not mine, or won't do">Dismiss</button></div>
+      <button class="card-d" ${dismissAttrs(t)} title="Drop: not mine, or won't do">Drop</button></div>
     <h2 class="card-title">${t.url ? `<a ${linkOpen(t.url, names(t.who)[0])}>${title}</a>` : title}</h2>
     ${t.reason ? `<p class="reason">${e(t.reason)}</p>` : ''}
     ${body}
@@ -871,7 +870,7 @@ function queue(V) {
       ${q.why ? `<span class="rq-w">${e(q.why)}</span>` : '<span></span>'}
       ${EFFORT[q.effort] ? `<span class="rq-c" aria-label="Effort: ${EFFORT[q.effort]}">${q.effort}</span>` : '<span></span>'}
       <button class="rq-x" ${doneAttrs(q)} aria-label="Mark done">✓</button>
-      <button class="rq-d" ${dismissAttrs(q)} aria-label="Dismiss: not mine, or won't do" title="Dismiss: not mine, or won't do"><svg viewBox="0 0 12 12"><path d="M2.5 9.5l7-7"/></svg></button>
+      <button class="rq-d" ${dismissAttrs(q)} title="Drop: not mine, or won't do">DROP</button>
     </${tag}>`;
   }).join('');
   const doneRows = done.map((d, j) => {
@@ -1083,7 +1082,7 @@ addEventListener('resize', () => { clearTimeout(relock); relock = setTimeout(loc
 document.fonts?.ready.then(lockRows);
 
 // The keyboard, like the game's controller: ↑↓ move the cursor in a column, ←→ switch columns, Enter confirms, Space
-// marks done, X dismisses (not mine), Esc backs out, R syncs. Enter on a Waiting On bar opens or closes the chat; ↓ then steps into its buttons,
+// marks done, X drops it (not mine, or won't do), Esc backs out, R syncs. Enter on a Waiting On bar opens or closes the chat; ↓ then steps into its buttons,
 // below it. Enter on the target steps into its buttons. In a row of buttons ←→ choose one and Enter presses it, like the
 // game's submenus. Moving the cursor never opens or closes anything: only Enter and Esc do. The cursor and the prompts show only while the keyboard is in use: the
 // mouse takes over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and
@@ -1124,7 +1123,7 @@ function kbPaint(scroll) {
     : el.matches('.ib') ? [open ? 'Close' : 'Open', open ? 'Resolved' : '']
     : el.matches('.ph-post') ? ['Open', 'Got it'] : ['Open', 'Done'];
   const into = open && acts(el).length ? `<span>${DN}Buttons</span>` : '';
-  const dismiss = el.matches('[data-card], .rq') ? '<span><kbd>X</kbd>Dismiss</span>' : '';
+  const dismiss = el.matches('[data-card], .rq') ? '<span><kbd>X</kbd>Drop</span>' : '';
   keys.innerHTML = `<span>${UD}${LR}Move</span>${into}${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}${dismiss}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
   keys.hidden = false;
 }
