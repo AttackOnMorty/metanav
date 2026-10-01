@@ -356,6 +356,15 @@
   .tc textarea { flex: 1; min-width: 0; padding: 8px 12px; border: 0; border-radius: 0; resize: none; overflow: hidden; background: #fff; color: #000;
     font: 500 14px/1.55 var(--sans); box-shadow: 0 0 0 2px #000; }
   .tc textarea:focus { outline: none; box-shadow: 0 0 0 2px #000, 5px 5px 0 var(--blue); }
+  .tc-row.hl textarea { box-shadow: 0 0 0 3px var(--red), 5px 5px 0 #000; }   /* the order an item's mark points at */
+  /* the entry, on the Requests heading, and the mark on an item a tactic placed */
+  .sec-tac { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px 2px 12px; border: 0; background: #fff; color: #000;
+    font: 900 13px/1.5 var(--sans); letter-spacing: .08em; transform: skewX(-12deg); box-shadow: 3px 3px 0 #000; }
+  .sec-tac b { min-width: 20px; padding: 0 5px; background: #000; color: #fff; font: 15px/1.3 var(--anton); letter-spacing: 0; text-align: center; }
+  .sec-tac:hover { background: #000; color: #fff; box-shadow: 3px 3px 0 var(--blue); } .sec-tac:hover b { background: #fff; color: #000; }
+  .tac { flex: none; padding: 0 7px; border: 0; background: #fff; color: #000; font: 13px/1.5 var(--anton); letter-spacing: .06em; transform: skewX(-12deg); box-shadow: 0 0 0 2px #000; }
+  .tac:hover { background: #000; color: #fff; box-shadow: 0 0 0 2px #fff; }
+  .card-kicker .tac { align-self: center; }
   .tc-x { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-top: 6px; padding: 0; border: 2px solid #000; border-radius: 50%; background: #fff; color: #000; }
   .tc-x svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
   .tc-x:hover, .tc-x:focus-visible { background: #000; color: #fff; }
@@ -811,7 +820,7 @@ function header(V) {
     <div class="hud">
       <div class="hud-date"><span class="hud-back"></span><span class="m">${now.getMonth() + 1}</span><span class="sl"></span>
         <span class="d">${String(now.getDate()).split('').map(x => `<i>${x}</i>`).join('')}</span><span class="wd">${WEEKDAY[now.getDay()]}</span></div>
-      <div class="hud-row"><span class="tod ${todFresh(now) ? 'fresh' : ''}">${TOD(now.getHours()).map(s => `<span>${s}</span>`).join('')}</span>${syncPill(V)}<button class="hud-go" data-tactics>TACTICS</button></div>
+      <div class="hud-row"><span class="tod ${todFresh(now) ? 'fresh' : ''}">${TOD(now.getHours()).map(s => `<span>${s}</span>`).join('')}</span>${syncPill(V)}</div>
     </div>
     ${tracker(V)}
   </header>`;
@@ -876,13 +885,17 @@ function card(V) {
   const title = ransom(t.title, keyOf(t));
   return `<article class="card" data-card>${EFFORT[t.effort] ? `<span class="no eff" aria-label="Effort: ${EFFORT[t.effort]}">${t.effort}</span>` : ''}
     <div class="card-kicker"><span class="ribbon">TARGET · DO THIS NOW</span>${flagHtml(flagOf(t))}
-      ${t.why ? `<span class="why ${t.urgency === 'high' ? 'hot' : ''}">${e(t.why)}</span>` : ''}</div>
+      ${t.why ? `<span class="why ${t.urgency === 'high' ? 'hot' : ''}">${e(t.why)}</span>` : ''}${tacMark(t)}</div>
     <h2 class="card-title">${t.url ? `<a ${linkOpen(t.url, names(t.who)[0])}>${title}</a>` : title}</h2>
     ${t.reason ? `<p class="reason">${e(t.reason)}</p>` : ''}
     ${body}
     <button class="stamp" ${doneAttrs(t)} aria-label="Mark done"><span class="st-top">TAKE IT</span><span class="st-mid">DONE</span></button>
   </article>`;
 }
+
+// An item placed by one of the user's tactics (the run sets `tactic`, the order's number) says so, and the mark opens that order.
+const tacticOf = q => { const n = Number(q.tactic), o = TACTICS.get().orders || []; return n >= 1 && n <= o.length ? n : 0; };
+const tacMark = q => { const n = tacticOf(q); return n ? `<button class="tac" data-tactics="${n}" title="Placed by your tactic: ${e(TACTICS.get().orders[n - 1])}">TACTICS</button>` : ''; };
 
 // Requests = the game's REQUEST list: a status stamp, the request, who asked. Done requests stay at the bottom, stamped DONE!
 function stampOf(q) {
@@ -902,7 +915,6 @@ let sel = -1;   // selected request (hover); none at rest
 const EFFORT = { D: 'minutes', C: 'under an hour', B: 'a few hours', A: 'a day or more' };
 function queue(V) {
   const done = V.done;   // like the game's list, every finished request stays at the bottom, greyed out
-  if (!V.rest.length && !done.length) return '';
   const X = [0, 18, 6, 24, 12, 30, 16, 34];
   sel = Math.min(sel, Math.max(0, V.rest.length - 1));
   const rows = V.rest.map((q, i) => {
@@ -910,7 +922,7 @@ function queue(V) {
     return `<${tag} class="rq ${i === sel ? 'sel' : ''}" data-i="${i}" style="--i:${i};--x:${X[i % X.length]}px" ${linkOpen(q.url, who[0])}>
       ${stampOf(q)}
       <span class="rq-b"><span class="rq-t">${e(q.title)}</span>${q.reason ? `<span class="rq-r">${e(q.reason)}</span>` : ''}</span>
-      ${q.why ? `<span class="rq-w">${e(q.why)}</span>` : '<span></span>'}
+      ${q.why || tacticOf(q) ? `<span class="rq-end">${tacMark(q)}${q.why ? `<span class="rq-w">${e(q.why)}</span>` : ''}</span>` : '<span></span>'}
       ${EFFORT[q.effort] ? `<span class="rq-c" aria-label="Effort: ${EFFORT[q.effort]}">${q.effort}</span>` : '<span></span>'}
       <span class="rq-acts"><button class="rq-d" ${dismissAttrs(q)} title="Drop: not mine, or won't do" aria-label="Drop"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button><button class="rq-x" ${doneAttrs(q)} title="Done" aria-label="Mark done"><svg viewBox="0 0 12 12"><path d="M2 6.5l2.8 2.8L10 3.5"/></svg></button></span>
     </${tag}>`;
@@ -924,8 +936,10 @@ function queue(V) {
       ${EFFORT[d.effort] ? `<span class="rq-c" aria-label="Effort: ${EFFORT[d.effort]}">${d.effort}</span>` : ''}
     </${tag}>`;
   }).join('');
-  const head = V.rest.length ? `${collage('REQUESTS', 'sec-next', 'sm')}<span class="cnt">${V.rest.length}</span>` : `${collage('CLEARED', 'sec-done', 'sm')}<span class="cnt">${V.done.filter(d => !d.dropped).length}</span>`;
-  return `<section class="req"><h3 class="sec">${head}</h3>${rows}${doneRows}</section>`;
+  const head = V.rest.length || !done.length ? `${collage('REQUESTS', 'sec-next', 'sm')}<span class="cnt">${V.rest.length}</span>` : `${collage('CLEARED', 'sec-done', 'sm')}<span class="cnt">${V.done.filter(d => !d.dropped).length}</span>`;
+  // TACTICS sits on the list it orders, with how many orders are set
+  const tac = `<button class="sec-tac" data-tactics title="Your standing orders for the ranking (T)">TACTICS <b>${(TACTICS.get().orders || []).length}</b></button>`;
+  return `<section class="req"><h3 class="sec">${head}${tac}</h3>${rows}${doneRows}</section>`;
 }
 
 // Send calling card: the drafted nudge, printed on a calling postcard addressed to them. Same data-* contract as core's composer().
@@ -1184,7 +1198,7 @@ document.addEventListener('keydown', ev => {
   ev.preventDefault();
   hideGo();
   if (k === 'r') return document.querySelector('#app [data-refresh]:not([disabled])')?.click();
-  if (k === 't') { kb = null; kbPaint(false); return openTactics(); }
+  if (k === 't') { const n = kb && slots(kb.col)[kb.i]?.querySelector('[data-tactics]')?.dataset.tactics; kb = null; kbPaint(false); return openTactics(Number(n) || 0); }
   if (!kb) { if (k !== 'Escape') { kb = { col: 0, i: 0 }; kbPaint(true); } return; }   // the first key only brings the cursor up (Esc never does)
   const el = slots(kb.col)[kb.i];
   const click = x => x?.click();
@@ -1247,7 +1261,7 @@ const tactics = Object.assign(document.createElement('div'), { className: 'tc-ba
 document.body.append(tactics);
 const tcRow = text => `<div class="tc-row"><textarea rows="1" spellcheck="false" aria-label="Order" placeholder="e.g. Tue/Wed: Project B work first">${e(text)}</textarea>
   <button class="tc-x" data-tc-del title="Remove" aria-label="Remove"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button></div>`;
-function openTactics() {
+function openTactics(n = 0) {   // n: the order to point at (1 for the first), from an item's mark
   const orders = TACTICS.get().orders || [];
   tactics.innerHTML = `<div class="tc" role="dialog" aria-modal="true" aria-label="Tactics">
     <div class="tc-h">${collage('TACTICS', 'tactics')}</div>
@@ -1258,14 +1272,16 @@ function openTactics() {
   </div>`;
   tactics.hidden = false; holding = true;
   tactics.querySelectorAll('textarea').forEach(fit);
-  tactics.querySelector('textarea').focus();
+  const row = tactics.querySelectorAll('.tc-row')[n - 1];
+  row?.classList.add('hl');
+  (row || tactics).querySelector('textarea').focus();
 }
 function closeTactics() { tactics.hidden = true; tactics.innerHTML = ''; holding = false; }
 document.addEventListener('click', ev => {
   const t = ev.target.closest('[data-tactics], [data-tc-add], [data-tc-del], [data-tc-save], [data-tc-close]');
   if (!t) { if (ev.target === tactics) closeTactics(); return; }   // a click beside the sheet puts it away
   ev.preventDefault();
-  if (t.matches('[data-tactics]')) return openTactics();
+  if (t.matches('[data-tactics]')) return openTactics(Number(t.dataset.tactics) || 0);
   if (t.matches('[data-tc-close]')) return closeTactics();
   if (t.matches('[data-tc-add]')) {
     tactics.querySelector('.tc-list').insertAdjacentHTML('beforeend', tcRow(''));

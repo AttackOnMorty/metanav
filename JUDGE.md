@@ -146,7 +146,7 @@ A promise with a date ("Back in the office to make up WFH · Tue") gets `due`. "
 - **Cost** — what another day costs: how many people it holds up or affects, whose (prod or a customer, then the team, then only the user), and what rides on it. It grows with waiting only where waiting itself does harm — the patience of someone who asked (more when they chase again, in any system), the credibility of a promise the user made; something nobody is waiting on gains nothing from age. No sprint or no date means no deadline, not a low cost: a bug hurting prod users costs a lot every day.
 - **Time** — how long it takes, set as `effort` on every queue item, one of four (the panel shows the letter, like the game's Difficulty column): **D** minutes — a reply, an approval, a Done; **C** under an hour — a normal PR review, a short write-up; **B** a few hours — a bug hunt, a small feature; **A** a day or more — a big PBI under way. Judge it from what the work is: a PR's `size` for a review, the body for an issue.
 - **Deadlines by slack:** a due date, a dated promise, the sprint's end for a PBI on a board running sprints (`sprint_end`). Slack = the time left before it minus the time it takes, counting today's meetings. With plenty of slack it ranks by its cost like the rest; as the slack runs out it rises, and with none it goes on top.
-- **The user's tactics** (step 5) come before the general rules here. Where an order decided an item's place, its `reason` says so in a few words ("Tactics: Project B day"), its `cost` names the order, and `tradeoffs` says which rule it overruled.
+- **The user's tactics** (step 5) come before the general rules here. Where an order decided an item's place, set its `tactic` to that order's number (1 for the first; the panel marks the item and links the mark to the order), name the order in its `cost`, and say in `tradeoffs` which rule it overruled.
 - **Quick ones together:** several items of a few minutes each sit next to each other, where the first of them ranks, so they're done in one go rather than between bigger work: every switch costs more than its minutes.
 
 Rank by cost, not by how urgent something feels: a loud, recent ask with little at stake stays below a quiet one that blocks someone. `urgency: "high"` only when delay costs something **today**; a new high item triggers a desktop notification, so be sparing.
@@ -199,7 +199,7 @@ Write it to `BRIEF`, the whole file at once, as valid JSON.
     { "id": "...", "source": "github|teams|mail|ado", "title": "Re-review #1796 #1800 #1801",
       "why": "Alex is blocked", "reason": "He finished the fixes on 9/24; all three PRs need your review to merge.",
       "who": ["Alex"], "urgency": "high|normal", "effort": "D|C|B|A", "due": "optional, e.g. Tue 9/29",
-      "cost": "Alex can't merge three PRs until you review; grows each day he waits.",
+      "cost": "Alex can't merge three PRs until you review; grows each day he waits.", "tactic": "optional: the number of the order that decided its place, e.g. 1",
       "url": "...", "actions": [ { "label": "Open PR", "url": "..." }, { "label": "Reply to Alex in Teams", "url": "msteams:..." } ],
       "since": "<ISO: when it became theirs to do — the ask, the promise, a GitHub item's `since`>", "last_activity": "<ISO>" }
   ],

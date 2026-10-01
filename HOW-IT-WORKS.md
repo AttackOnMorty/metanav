@@ -84,7 +84,7 @@ Six principles decide where things go:
      | **A** | A day or more: a big item under way. |
 
    - **Deadlines by slack.** Slack is the time left before a due date or sprint end, minus the time the work takes, counting today's meetings. An item with plenty of slack ranks by cost like everything else. As its slack runs out it rises, and with none left it goes on top.
-   - **Your tactics come first.** What only you know, written on the page's **TACTICS** sheet (section 5): which days belong to which project, whose asks come first, what can wait. Where one of them decided an item's place, its reason says so.
+   - **Your tactics come first.** What only you know, written on the page's **TACTICS** sheet (section 5): which days belong to which project, whose asks come first, what can wait. Where one of them decided an item's place, the item carries a TACTICS mark.
    - **Quick ones together.** Several few-minute items sit next to each other, so you can clear them in one go.
 3. **Today's calendar shapes the order.**
    - Work a meeting needs moves up before that meeting.
@@ -100,9 +100,9 @@ The page doesn't show these. When the order looks wrong, they tell you which rul
 
 ## 5. The page, section by section
 
-**Header.** It shows today's date and time of day, when the data was last synced, **SYNC NOW** and **TACTICS**. A red banner appears when a source failed. When the cause is an expired sign-in, the banner has a **SIGN IN** button: it opens a Chrome window on Outlook and Teams, closes it once you're in, and refreshes.
+**Header.** It shows today's date and time of day, when the data was last synced, and **SYNC NOW**. A red banner appears when a source failed. When the cause is an expired sign-in, the banner has a **SIGN IN** button: it opens a Chrome window on Outlook and Teams, closes it once you're in, and refreshes.
 
-**TACTICS.** Standing orders for every sync, a sentence each in your own words: context the data doesn't carry. For example "Tue and Wed are my Project B days: its sprint work comes first", "Asks from my manager come first", or "Release notes can wait until Friday". **Save & sync** keeps them and runs a sync, so you see the new order straight away. Each run reads them; where one conflicts with a general ranking rule, yours wins.
+**TACTICS** (on the Requests heading, with how many are set). Standing orders for every sync, a sentence each in your own words: context the data doesn't carry. For example "Tue and Wed are my Project B days: its sprint work comes first", "Asks from my manager come first", or "Release notes can wait until Friday". **Save & sync** keeps them and runs a sync, so you see the new order straight away. Each run reads them; where one conflicts with a general ranking rule, yours wins. An item that one of them placed carries a small **TACTICS** mark: click it to see, and change, the order behind it.
 
 **Target: do this now.** The top of the ranked list, as a large card. It shows:
 - why it's first (the red tag);
