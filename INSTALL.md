@@ -22,7 +22,6 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 4. **Write `config.json`.** Copy `config.example.json` to `config.json` and ask the user for each value:
    - `user.name`, and `user.short_name`, which is how the user appears in chats.
    - `projects`: the projects the user cares about. News about them counts as "worth knowing".
-   - `schedule` (optional): if the user works on one project per weekday, map the days to project names, e.g. `{ "Mon": "Project A", "Tue": "Project B" }`. Work for another day's project then ranks lower. Leave it `{}` otherwise.
    - `github_owner`: the GitHub org the user's work lives in.
    - `mail.received_folders`: Inbox (already filled in), plus every Inbox subfolder the user's rules file work mail into. For each subfolder, ask the user to open it in Outlook on the web and paste the address bar's URL; use the folder name exactly as Outlook shows it.
    - `mail.skipped_folders`: notification folders that are never read, like `GitHub`.
@@ -66,6 +65,7 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 
 8. **Finish.** Summarise what was installed and where. Remind the user:
    - SYNC NOW on the panel, or `metanav` in a new terminal, refreshes on demand;
+   - TACTICS on the panel takes what only they know, a sentence each — which days belong to which project, whose asks come first — and every run ranks by it;
    - what a run costs (README, "Cost");
    - `HOW-IT-WORKS.md` explains what the page shows and how it ranks;
    - how to uninstall (the end of this file).

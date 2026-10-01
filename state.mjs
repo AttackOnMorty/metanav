@@ -1,9 +1,10 @@
 // Meta-Nav's background service, started at login by launchd (macOS) or Task Scheduler (Windows):
 // - the hourly run: it starts run.mjs on the hour (run.mjs itself keeps to weekdays within config.hours);
-// - the click store: the panel's "done", "resolved" and "Got it" clicks, kept in one file that every browser and every
-//   run share. A page opened from disk can read files beside it but can't write any, so this service writes for it.
+// - the click store: the panel's "done", "resolved" and "Got it" clicks, and the user's tactics, kept in one file that
+//   every browser and every run share. A page opened from disk can read files beside it but can't write any, so this
+//   service writes for it.
 // It listens on 127.0.0.1 only.
-//   POST /state   {"key": "tower:dismissed" | "tower:read", "value": {...}}   -> the whole state, as JSON
+//   POST /state   {"key": "tower:dismissed" | "tower:read" | "metanav:tactics", "value": {...}}   -> the whole state, as JSON
 //   POST /signin  {"source": "Azure DevOps" | "Outlook" | "Teams"}          -> {"status": "started" | "busy"}
 //                 The banner's SIGN IN button: a window to sign in, then a refresh.
 //   POST /refresh {}                                                         -> {"status": "started" | "busy"}
@@ -16,7 +17,7 @@ import { join } from 'node:path';
 import { OUT, PROFILE, SKILL, chromePath, tool } from './common.mjs';
 
 const PORT = 47615;
-const KEYS = ['tower:dismissed', 'tower:read'];
+const KEYS = ['tower:dismissed', 'tower:read', 'metanav:tactics'];
 const STATE = join(OUT, 'state.json');
 const signing = new Set();   // what's being signed in to right now, so a second click doesn't open a second window
 const sleep = ms => new Promise(r => setTimeout(r, ms));

@@ -343,6 +343,29 @@
   .pc .cancel { background: #fff; color: #000; font-size: 13px; padding: 5px 14px; }
   .pc-sign { margin-left: auto; font: 900 13px/1 var(--serif); }
 
+  /* TACTICS: the user's standing orders for the judge, like the game's party tactics - you set the policy, they act on it */
+  .tc-back { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; padding: 16px; background: rgba(0,0,0,.6); }
+  .tc-back[hidden] { display: none; }
+  .tc { width: min(620px, 100%); max-height: calc(100vh - 32px); overflow: auto; padding: 18px 20px 22px; background: #fff; color: #000;
+    transform: rotate(-1deg); box-shadow: 0 0 0 4px #000, 10px 10px 0 4px var(--red-2); animation: tcIn .32s cubic-bezier(.2,1.3,.4,1) both; }
+  @keyframes tcIn { from { opacity: 0; transform: translate(-30px, 40px) rotate(-8deg) scale(.85); } }
+  .tc-h { font-size: 26px; }
+  .tc-sub { margin: 8px 0 14px; font-weight: 700; font-size: 14px; }
+  .tc-list { display: grid; gap: 10px; }
+  .tc-row { display: flex; align-items: flex-start; gap: 10px; }
+  .tc textarea { flex: 1; min-width: 0; padding: 8px 12px; border: 0; border-radius: 0; resize: none; overflow: hidden; background: #fff; color: #000;
+    font: 500 14px/1.55 var(--sans); box-shadow: 0 0 0 2px #000; }
+  .tc textarea:focus { outline: none; box-shadow: 0 0 0 2px #000, 5px 5px 0 var(--blue); }
+  .tc-x { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin-top: 6px; padding: 0; border: 2px solid #000; border-radius: 50%; background: #fff; color: #000; }
+  .tc-x svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  .tc-x:hover, .tc-x:focus-visible { background: #000; color: #fff; }
+  .tc-add { margin-top: 12px; padding: 3px 12px; border: 0; background: #fff; color: #000; font-weight: 900; font-size: 13px; box-shadow: inset 0 0 0 2px #000; transform: skewX(-12deg); }
+  .tc-add:hover { background: #000; color: #fff; }
+  .tc-f { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 20px; }
+  .tc .send { background: #000; font-size: 13px; padding: 5px 14px; box-shadow: 3px 3px 0 var(--red); }
+  .tc .cancel { background: #fff; color: #000; font-size: 13px; padding: 5px 14px; box-shadow: inset 0 0 0 2px #000; }
+  .tc-note { margin-left: auto; font-size: 12px; font-weight: 700; }
+
   /* ---------- PHAN-SITE: what people are saying — worth knowing, no action. In the game these posts scroll by in the
      bottom-right of the day-change screen; here they sit under the IM phone, the right column being "the other people". ---------- */
   /* like every section: heading and count above, the posts' panel below; nothing left to read, just the heading and a 0 */
@@ -438,7 +461,7 @@
   @media (hover: none) { .rq .rq-acts { opacity: .8; pointer-events: auto; } .rq.sel .rq-c { opacity: 1; } }
   @media (hover: none) and (min-width: 601px) { .rq { grid-template-columns: 80px minmax(0, 1fr) auto 64px auto; } .rq .rq-acts { grid-column: 5; } }
   @media (prefers-reduced-motion: reduce) {
-    .goto, .sun .rays, .burst, .why.hot, .alert-k, .hud-sync::before, .tod > span, .tod::after, .ib-detail, .ib-msg, .ib-hd, .ib-foot, .ib-quote, .pc { animation: none !important; }
+    .goto, .sun .rays, .burst, .why.hot, .alert-k, .hud-sync::before, .tod > span, .tod::after, .ib-detail, .ib-msg, .ib-hd, .ib-foot, .ib-quote, .pc, .tc { animation: none !important; }
     .intro * { animation: none !important; }
   }
 </style>
@@ -500,6 +523,8 @@ const store = (k, shared = false) => ({
 });
 if (SHARED) Object.keys(local.get('tower:unsaved')).forEach(k => { SHARED = { ...SHARED, [k]: local.get(k) }; push(k, local.get(k)); });
 const DONE = store('tower:dismissed', true), TAB = store('tower:tab');
+// The user's tactics: { orders: ["…", …] }, standing orders in their own words that every run reads (JUDGE.md step 5)
+const TACTICS = store('metanav:tactics', true);
 const entry = v => typeof v === 'string' ? { at: v, when: '', title: '' } : v;
 const keyOf = x => x.id || x.url || x.title || x.what;
 const convOf = k => { k = String(k || ''); const m = k.match(/^msteams:\/l\/message\/([^/]+)/) || k.match(/^(19:[^/#]+)/); return m ? decodeURIComponent(m[1]) : k; };
@@ -630,6 +655,7 @@ const go = url => { if (!url) return; if (/^https?:/.test(url)) window.open(url,
 const FRESH_RUN = (() => { try { const was = sessionStorage.getItem('tower:seen-run'); sessionStorage.setItem('tower:seen-run', B.generated_at); return was !== B.generated_at; } catch { return true; } })();
 
 let beforeDone = null;   // optional: async el => {} — a design's "done" (or drop) animation, awaited before the re-render
+let holding = false;     // a design's own sheet is open (tactics): no repaint or reload under it
 function start(render) {
   document.addEventListener('click', async ev => {
     const t = ev.target.closest('[data-done], [data-dismiss], [data-restore], [data-nudge], [data-send], [data-cancel], [data-tab]');
@@ -662,8 +688,8 @@ function start(render) {
     }
     render();
   });
-  // Don't repaint or reload under someone editing a nudge.
-  const editing = () => openNudge || document.activeElement?.tagName === 'TEXTAREA';
+  // Don't repaint or reload under someone editing a nudge or their tactics.
+  const editing = () => openNudge || holding || document.activeElement?.tagName === 'TEXTAREA';
   render();
   setInterval(() => editing() || render(), 30e3);          // keep clocks and the next-meeting line live
   // Pick up the next run's rewrite of this file. render.py writes stamp.js beside it: reload only when that changes,
@@ -785,7 +811,7 @@ function header(V) {
     <div class="hud">
       <div class="hud-date"><span class="hud-back"></span><span class="m">${now.getMonth() + 1}</span><span class="sl"></span>
         <span class="d">${String(now.getDate()).split('').map(x => `<i>${x}</i>`).join('')}</span><span class="wd">${WEEKDAY[now.getDay()]}</span></div>
-      <div class="hud-row"><span class="tod ${todFresh(now) ? 'fresh' : ''}">${TOD(now.getHours()).map(s => `<span>${s}</span>`).join('')}</span>${syncPill(V)}</div>
+      <div class="hud-row"><span class="tod ${todFresh(now) ? 'fresh' : ''}">${TOD(now.getHours()).map(s => `<span>${s}</span>`).join('')}</span>${syncPill(V)}<button class="hud-go" data-tactics>TACTICS</button></div>
     </div>
     ${tracker(V)}
   </header>`;
@@ -1098,7 +1124,7 @@ addEventListener('resize', () => { clearTimeout(relock); relock = setTimeout(loc
 document.fonts?.ready.then(lockRows);
 
 // The keyboard, like the game's controller: ↑↓ move the cursor in a column, ←→ switch columns, Enter confirms, Space
-// marks done, X drops it (not mine, or won't do), Esc backs out, R syncs. Enter on a Waiting On bar opens or closes the chat; ↓ then steps into its buttons,
+// marks done, X drops it (not mine, or won't do), Esc backs out, R syncs, T opens the tactics. Enter on a Waiting On bar opens or closes the chat; ↓ then steps into its buttons,
 // below it. Enter on the target steps into its buttons. In a row of buttons ←→ choose one and Enter presses it, like the
 // game's submenus. Moving the cursor never opens or closes anything: only Enter and Esc do. The cursor and the prompts show only while the keyboard is in use: the
 // mouse takes over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and
@@ -1140,20 +1166,25 @@ function kbPaint(scroll) {
     : el.matches('.ph-post') ? ['Open', 'Got it'] : ['Open', 'Done'];
   const into = open && acts(el).length ? `<span>${DN}Buttons</span>` : '';
   const dismiss = el.matches('[data-card], .rq') ? '<span><kbd>X</kbd>Drop</span>' : '';
-  keys.innerHTML = `<span>${UD}${LR}Move</span>${into}${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}${dismiss}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
+  keys.innerHTML = `<span>${UD}${LR}Move</span>${into}${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}${dismiss}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span><span><kbd>T</kbd>Tactics</span>`;
   keys.hidden = false;
 }
 document.addEventListener('keydown', ev => {
   if (ev.metaKey || ev.ctrlKey || ev.altKey) return;   // the browser's own shortcuts
+  if (!tactics.hidden) {                                 // the tactics sheet: keys type; Esc leaves the box, then the sheet
+    if (ev.key === 'Escape') ev.target.closest?.('textarea') ? ev.target.blur() : closeTactics();
+    return;
+  }
   if (ev.target.closest?.('textarea, input')) {         // typing a nudge: Esc leaves the box, every other key types
     if (ev.key === 'Escape') ev.target.blur();
     return;
   }
   const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
-  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape', 'r', 'x'].includes(k)) return;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape', 'r', 't', 'x'].includes(k)) return;
   ev.preventDefault();
   hideGo();
   if (k === 'r') return document.querySelector('#app [data-refresh]:not([disabled])')?.click();
+  if (k === 't') { kb = null; kbPaint(false); return openTactics(); }
   if (!kb) { if (k !== 'Escape') { kb = { col: 0, i: 0 }; kbPaint(true); } return; }   // the first key only brings the cursor up (Esc never does)
   const el = slots(kb.col)[kb.i];
   const click = x => x?.click();
@@ -1207,6 +1238,44 @@ document.addEventListener('click', ev => {
   pcOpen = t.matches('[data-pc]') ? t.dataset.pc : '';
   render();
   if (pcOpen) document.querySelector('.pc textarea')?.focus();
+});
+
+// TACTICS: the user's standing orders for the judge, in their own words - what only they know, like which days go to
+// which project. A sheet over the page (outside the re-render, so nothing repaints under the typing); saving starts a sync,
+// so the new order shows straight away.
+const tactics = Object.assign(document.createElement('div'), { className: 'tc-back', hidden: true });
+document.body.append(tactics);
+const tcRow = text => `<div class="tc-row"><textarea rows="1" spellcheck="false" aria-label="Order" placeholder="e.g. Tue/Wed: Project B work first">${e(text)}</textarea>
+  <button class="tc-x" data-tc-del title="Remove" aria-label="Remove"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button></div>`;
+function openTactics() {
+  const orders = TACTICS.get().orders || [];
+  tactics.innerHTML = `<div class="tc" role="dialog" aria-modal="true" aria-label="Tactics">
+    <div class="tc-h">${collage('TACTICS', 'tactics')}</div>
+    <p class="tc-sub">Standing orders for every sync: what only you know, in your own words.</p>
+    <div class="tc-list">${(orders.length ? orders : ['']).map(tcRow).join('')}</div>
+    <button class="tc-add" data-tc-add>+ Add order</button>
+    <div class="tc-f"><button class="send" data-tc-save><span>Save & sync</span></button><button class="cancel" data-tc-close><span>Cancel</span></button></div>
+  </div>`;
+  tactics.hidden = false; holding = true;
+  tactics.querySelectorAll('textarea').forEach(fit);
+  tactics.querySelector('textarea').focus();
+}
+function closeTactics() { tactics.hidden = true; tactics.innerHTML = ''; holding = false; }
+document.addEventListener('click', ev => {
+  const t = ev.target.closest('[data-tactics], [data-tc-add], [data-tc-del], [data-tc-save], [data-tc-close]');
+  if (!t) { if (ev.target === tactics) closeTactics(); return; }   // a click beside the sheet puts it away
+  ev.preventDefault();
+  if (t.matches('[data-tactics]')) return openTactics();
+  if (t.matches('[data-tc-close]')) return closeTactics();
+  if (t.matches('[data-tc-add]')) {
+    tactics.querySelector('.tc-list').insertAdjacentHTML('beforeend', tcRow(''));
+    return tactics.querySelector('.tc-row:last-child textarea').focus();
+  }
+  if (t.matches('[data-tc-del]')) return t.closest('.tc-row').remove();
+  const orders = [...tactics.querySelectorAll('textarea')].map(x => x.value.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const changed = JSON.stringify(orders) !== JSON.stringify(TACTICS.get().orders || []);
+  closeTactics();
+  if (changed) { TACTICS.set({ orders }); document.querySelector('#app [data-refresh]:not([disabled])')?.click(); }
 });
 
 // Draft boxes grow with their text, so a drafted message is never cut off.

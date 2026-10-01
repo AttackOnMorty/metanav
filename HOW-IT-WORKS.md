@@ -84,7 +84,7 @@ Six principles decide where things go:
      | **A** | A day or more: a big item under way. |
 
    - **Deadlines by slack.** Slack is the time left before a due date or sprint end, minus the time the work takes, counting today's meetings. An item with plenty of slack ranks by cost like everything else. As its slack runs out it rises, and with none left it goes on top.
-   - **Today's project** (optional, `schedule` in `config.json`). If you work on one project per weekday, work for another project can wait until that project's day.
+   - **Your tactics come first.** What only you know, written on the page's **TACTICS** sheet (section 5): which days belong to which project, whose asks come first, what can wait. Where one of them decided an item's place, its reason says so.
    - **Quick ones together.** Several few-minute items sit next to each other, so you can clear them in one go.
 3. **Today's calendar shapes the order.**
    - Work a meeting needs moves up before that meeting.
@@ -100,7 +100,9 @@ The page doesn't show these. When the order looks wrong, they tell you which rul
 
 ## 5. The page, section by section
 
-**Header.** It shows today's date and time of day, when the data was last synced, and **SYNC NOW**. A red banner appears when a source failed. When the cause is an expired sign-in, the banner has a **SIGN IN** button: it opens a Chrome window on Outlook and Teams, closes it once you're in, and refreshes.
+**Header.** It shows today's date and time of day, when the data was last synced, **SYNC NOW** and **TACTICS**. A red banner appears when a source failed. When the cause is an expired sign-in, the banner has a **SIGN IN** button: it opens a Chrome window on Outlook and Teams, closes it once you're in, and refreshes.
+
+**TACTICS.** Standing orders for every sync, a sentence each in your own words: context the data doesn't carry. For example "Tue and Wed are my Project B days: its sprint work comes first", "Asks from my manager come first", or "Release notes can wait until Friday". **Save & sync** keeps them and runs a sync, so you see the new order straight away. Each run reads them; where one conflicts with a general ranking rule, yours wins.
 
 **Target: do this now.** The top of the ranked list, as a large card. It shows:
 - why it's first (the red tag);
@@ -113,7 +115,7 @@ The page doesn't show these. When the order looks wrong, they tell you which rul
 **Requests.** The rest of your to-dos, in rank order. Each row has:
 - **A status on the left**, in this order of preference: `NEW!` (appeared since the last run), `UPDATE` (something happened on it), `URGENT`, `DEADLINE`. Otherwise, how long it has been yours, as `3d` or `TODAY`.
 - **The title**, with one line of reason under it. Hover over a row to read both in full.
-- **A short tag saying why it's ranked there**, such as "Alex is blocked" or "Sprint ends 13/10".
+- **A short tag saying why it's ranked there**, such as "Alex is blocked" or "Sprint ends 10/13".
 - **The difficulty letter.** Hover over a row and its buttons take the letter's place: ✓ marks it done, ✕ drops it — not yours, or not going to happen. The target card has the same two, as the TAKE IT DONE stamp and a Drop button beside it.
 
 At the bottom, today's finished items stay as grey `DONE!` rows with their difficulty letter, and dropped ones as `DROPPED`. A row you ticked yourself keeps **UNDO**. When the next run confirms what happened, it adds a note under your tick.
@@ -141,10 +143,11 @@ Click a bar to open it:
 | X | Drop |
 | Esc | Back out one step |
 | R | SYNC NOW |
+| T | TACTICS |
 
 ## 6. Your clicks
 
-- **What gets saved.** ✓ (done), Resolved and Got it are saved by the same background service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your computer sees the same clicks.
+- **What gets saved.** ✓ (done), Resolved, Got it and your tactics are saved by the same background service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your computer sees the same clicks.
 - **Ticked means closed.** The next run treats a ticked item as closed. If something new happens on it later, it comes back.
 - **Dropped means closed by your decision.** The run won't bring it back from the same messages, and writes no done row for it. If you only disagree with how it was read ("you can test it tomorrow"), reply in the conversation instead: the next run follows the reply.
 - **Deleting received mail counts as done.** Archiving it does too.
@@ -159,7 +162,7 @@ Click a bar to open it:
 | `~/metanav/index.html` | The page. Keep it open in a tab. |
 | `~/metanav/runs/` | Each run's result, including `cost` and `tradeoffs`, kept 14 days. The next run starts from the newest. |
 | `~/metanav/logs/` | Each run's log, kept 7 days. `result` is the run's own summary. |
-| `~/metanav/state.json` | Your clicks. |
+| `~/metanav/state.json` | Your clicks and tactics. |
 | `~/Library/Caches/metanav/` (Windows: `%LOCALAPPDATA%\metanav\`) | Meta-Nav's own Chrome profile, with your Microsoft sign-in. |
 | `~/.claude/skills/metanav/` (or `~/.agents/skills/metanav/` with Codex) | The skill: `run.mjs` (the runner), `JUDGE.md` (the judge's instructions), `config.json`, and the scripts. |
 

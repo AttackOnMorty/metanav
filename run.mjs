@@ -45,7 +45,7 @@ const LOOKBACK = new Date(Date.now() - (config.lookback_days ?? 30) * 864e5).toI
 let SINCE = (!RESCAN && read(join(OUT, '.last-run'))) || LOOKBACK;
 if (SINCE < LOOKBACK) SINCE = LOOKBACK;   // back from a long break: loops don't reach further than this
 const FIRST = PREV ? 'no' : 'yes';
-const TODAY_PROJECT = (config.schedule || {})[now.toLocaleDateString('en-US', { weekday: 'short' })] || 'none';
+const NOW = `${now.toLocaleDateString('en-US', { weekday: 'long' })} ${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
 
 // Collect: Outlook and Teams in a headless Chrome, GitHub and Azure DevOps alongside, into one file. About 25 s.
 const DIR = join(OUT, '.inputs');
@@ -54,7 +54,7 @@ const INPUTS = join(DIR, 'inputs.json'), BRIEF = join(DIR, 'brief.json');
 const collect = spawnSync(process.execPath, [join(SKILL, 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3, windowsHide: true });
 const collected = `${collect.stdout || ''}${collect.stderr || ''}`.trim();
 
-// Judge. The agent reads the inputs, the previous result, the user's clicks and the config, follows JUDGE.md,
+// Judge. The agent reads the inputs, the previous result, the user's clicks and tactics and the config, follows JUDGE.md,
 // and writes BRIEF - nothing else: no network, no shell of its own, so it runs with the least access either agent has.
 // The prompt goes in on stdin: it's long, and on Windows the agents start through the shell.
 const prompt = `You are Meta-Nav's judge, running unattended: nobody will answer a question, so decide, finish and write the file.
@@ -62,7 +62,7 @@ Read ${join(SKILL, 'JUDGE.md')} and follow it, with these facts for this run:
 SINCE=${SINCE}
 LOOKBACK=${LOOKBACK}
 FIRST=${FIRST}
-TODAY_PROJECT=${TODAY_PROJECT}
+NOW=${NOW}
 INPUTS=${INPUTS}
 PREV=${PREV || 'none'}
 STATE=${join(OUT, 'state.json')}
