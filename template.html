@@ -110,6 +110,7 @@
   .hud-date .wd { position: absolute; right: -10px; bottom: 4px; background: #fff; color: #000; font: 30px/1 var(--anton); padding: 3px 11px 1px;
     transform: rotate(-10deg) skewX(-10deg); box-shadow: 4px 4px 0 #000; }
   .hud-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 4px; }
+  .hud-row > :not(.tod) { top: 6px; }   /* the sync line sits a little below the time of day */
   .tod { font: 900 28px/1.02 var(--sans); color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; transform: translateY(-6px) rotate(-16deg); transform-origin: right top; }   /* under the date's left, as in the game: tilted about its top-right end so that end stays below the weekday */
   .tod span { display: block; } .tod span + span { margin-left: 1em; }
   .tod { position: relative; }
@@ -120,7 +121,7 @@
   @keyframes cut { 45% { transform: rotate(-6deg) scaleX(1); opacity: 1; } 100% { transform: rotate(-6deg) scaleX(1); opacity: 0; } }
   .hud-sync { position: relative; overflow: hidden; isolation: isolate; margin-left: 16px; background: #000; color: #fff; font-weight: 700; font-size: 14px; padding: 1px 12px; transform: skewX(-12deg); }
   .hud-sync.failed { background: #fff; color: var(--red); }
-  .hud-go { padding: 1px 10px; border: 0; background: #fff; color: #000; font: 900 12px/1.6 var(--sans); letter-spacing: .08em; white-space: nowrap;
+  .hud-go { position: relative; padding: 1px 10px; border: 0; background: #fff; color: #000; font: 900 12px/1.6 var(--sans); letter-spacing: .08em; white-space: nowrap;
     transform: skewX(-12deg); box-shadow: 3px 3px 0 #000; cursor: pointer; }
   .hud-go:hover:not(:disabled) { background: #000; color: #fff; box-shadow: 3px 3px 0 var(--blue); }
   .hud-go:disabled { opacity: .45; box-shadow: none; cursor: default; }
@@ -370,6 +371,7 @@
   .slash { position: absolute !important; left: -3%; top: var(--top, 50%); width: 106%; height: 12px; margin-top: -6px; z-index: 5 !important; background: var(--red); box-shadow: 0 0 0 3px #000;
     transform: rotate(var(--a, -9deg)) scaleX(0); transform-origin: left center; animation: slash .18s .05s cubic-bezier(.6,0,.4,1) forwards; }
   .rq .slash, .ib .slash, .ph-post .slash { height: 8px; margin-top: -4px; }
+  .slash.drop { background: #000; box-shadow: 0 0 0 3px #fff; }   /* a drop's cut is black, outlined white: the reverse of done's red */
   .clear-stamp { position: absolute !important; left: 50%; top: 50%; z-index: 6 !important; padding: 4px 18px; border: 5px solid var(--red); background: rgba(255,255,255,.94); color: var(--red);
     font: 44px/1 var(--anton); letter-spacing: .06em; white-space: nowrap; transform: translate(-50%, -50%) rotate(-12deg) scale(3); opacity: 0;
     animation: stampIn .22s .2s cubic-bezier(.2,1.6,.4,1) forwards; }
@@ -1226,7 +1228,8 @@ beforeDone = async el => {
   const w = host.offsetWidth * 1.06, h = host.offsetHeight;
   const a = Math.min(9, Math.atan(h * .6 / w) * 180 / Math.PI);
   const top = h / 2 + w * Math.tan(a * Math.PI / 180) / 2;
-  host.insertAdjacentHTML('beforeend', `<span class="slash" style="--a:-${a.toFixed(2)}deg;--top:${top.toFixed(0)}px"></span>${el.matches('[data-dismiss]') ? '<span class="clear-stamp drop">DROPPED</span>' : '<span class="clear-stamp">MISSION CLEAR</span>'}`);
+  const drop = el.matches('[data-dismiss]');
+  host.insertAdjacentHTML('beforeend', `<span class="slash${drop ? ' drop' : ''}" style="--a:-${a.toFixed(2)}deg;--top:${top.toFixed(0)}px"></span>${drop ? '<span class="clear-stamp drop">DROPPED</span>' : '<span class="clear-stamp">MISSION CLEAR</span>'}`);
   await new Promise(r => setTimeout(r, 960));
 };
 
