@@ -1061,9 +1061,9 @@ addEventListener('resize', () => { clearTimeout(relock); relock = setTimeout(loc
 document.fonts?.ready.then(lockRows);
 
 // The keyboard, like the game's controller: ↑↓ move the cursor in a column, ←→ switch columns, Enter confirms, Space
-// marks done, Esc backs out, R syncs. Enter on a Waiting On bar opens the chat; ↓ then steps into its buttons, below it,
-// and leaving the bar closes the chat. Enter on the target steps into its buttons. In a row of buttons ←→ choose one and
-// Enter presses it, like the game's submenus. The cursor and the prompts show only while the keyboard is in use: the
+// marks done, Esc backs out, R syncs. Enter on a Waiting On bar opens or closes the chat; ↓ then steps into its buttons,
+// below it. Enter on the target steps into its buttons. In a row of buttons ←→ choose one and Enter presses it, like the
+// game's submenus. Moving the cursor never opens or closes anything: only Enter and Esc do. The cursor and the prompts show only while the keyboard is in use: the
 // mouse takes over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and
 // Phan-Site.
 const keys = Object.assign(document.createElement('div'), { className: 'keys', hidden: true });
@@ -1119,23 +1119,22 @@ document.addEventListener('keydown', ev => {
   if (!kb) { kb = { col: 0, i: 0 }; return kbPaint(true); }   // the first key only brings the cursor up
   const el = slots(kb.col)[kb.i];
   const click = x => x?.click();
-  const closeChat = () => { if (el?.matches('.ib.sel')) click(el.querySelector('[data-nudge]')); };
   if (el && kb.act != null && k !== ' ') {   // in a row of buttons
     const list = acts(el);
     if (k === 'ArrowLeft') kb.act = Math.max(0, kb.act - 1);
     else if (k === 'ArrowRight') kb.act = Math.min(list.length - 1, kb.act + 1);
     else if (k === 'Enter') { const b = list[kb.act]; kb.act = null; click(b); }
-    else if (k === 'ArrowDown') { kb.act = null; closeChat(); kb.i++; }   // on to the next item
+    else if (k === 'ArrowDown') { if (kb.i < slots(kb.col).length - 1) { kb.act = null; kb.i++; } }   // on to the next item, if there is one
     else kb.act = null;                                                   // ↑ or Esc: back up to the bar or the card
     return kbPaint(true);
   }
-  if (k === 'ArrowUp') { closeChat(); kb.i--; }
+  if (k === 'ArrowUp') kb.i--;
   else if (k === 'ArrowDown') {
     if (el?.matches('.ib.sel') && acts(el).length) kb.act = 0;   // an open chat: down into its buttons
-    else { closeChat(); kb.i++; }
+    else kb.i++;
   } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
     const col = k === 'ArrowLeft' ? 0 : 1;
-    if (col !== kb.col && slots(col).length) { closeChat(); kb = { col, i: 0 }; }
+    if (col !== kb.col && slots(col).length) kb = { col, i: 0 };
   } else if (k === 'Escape') {
     // back out one step: the postcard, then the open chat, then the cursor itself
     if (document.querySelector('#app .pc')) click(document.querySelector('#app [data-pc-close]'));
