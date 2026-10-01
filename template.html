@@ -101,12 +101,13 @@
   .hud-back { position: absolute; inset: 8px 50px 12px -8px; background: #fff; transform: rotate(-4deg);
     clip-path: polygon(0 16%, 34% 3%, 58% 10%, 100% 0, 94% 52%, 100% 100%, 62% 90%, 30% 100%, 4% 86%); }
   .hud-back::after { content: ""; position: absolute; inset: 5px; background: #000; clip-path: inherit; }
-  .hud-date .m { position: relative; font: 46px/1 var(--anton); color: #fff; -webkit-text-stroke: 5px #000; paint-order: stroke fill; transform: rotate(-16deg) translateY(-4px); margin-right: 4px; }
+  .hud-date .m { position: relative; font: 50px/1 var(--anton); color: #fff; -webkit-text-stroke: 5px #000; paint-order: stroke fill; transform: rotate(-16deg) translateY(-4px); margin-right: 4px; }
+  .hud-date .sl { position: relative; width: 10px; height: 54px; margin: 30px 6px 0 2px; background: #fff; box-shadow: 0 0 0 3px #000; transform: skewX(-30deg); }   /* the slash between month and day */
   .hud-date .d { position: relative; display: inline-flex; }
-  .hud-date .d i { font: 100px/.9 var(--anton); font-style: normal; paint-order: stroke fill; }
+  .hud-date .d i { font: 110px/.9 var(--anton); font-style: normal; paint-order: stroke fill; }
   .hud-date .d i:nth-child(1) { color: #fff; -webkit-text-stroke: 6px #000; transform: rotate(-7deg) translateY(3px); }
   .hud-date .d i:nth-child(2) { color: #000; -webkit-text-stroke: 6px #fff; transform: rotate(5deg) translateY(14px); margin-left: -5px; }
-  .hud-date .wd { position: absolute; right: 40px; bottom: 4px; background: #fff; color: #000; font: 28px/1 var(--anton); padding: 3px 11px 1px;
+  .hud-date .wd { position: absolute; right: 40px; bottom: 4px; background: #fff; color: #000; font: 30px/1 var(--anton); padding: 3px 11px 1px;
     transform: rotate(-10deg) skewX(-10deg); box-shadow: 4px 4px 0 #000; }
   .hud-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 4px; }
   .tod { font: 900 28px/1.02 var(--sans); color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; transform: rotate(-10deg); }
@@ -778,7 +779,7 @@ function header(V) {
   const now = V.now;
   return `<header class="top">
     <div class="hud">
-      <div class="hud-date"><span class="hud-back"></span><span class="m">${now.getMonth() + 1}</span>
+      <div class="hud-date"><span class="hud-back"></span><span class="m">${now.getMonth() + 1}</span><span class="sl"></span>
         <span class="d">${String(now.getDate()).split('').map(x => `<i>${x}</i>`).join('')}</span><span class="wd">${WEEKDAY[now.getDay()]}</span></div>
       <div class="hud-row"><span class="tod ${todFresh(now) ? 'fresh' : ''}">${TOD(now.getHours()).map(s => `<span>${s}</span>`).join('')}</span>${syncPill(V)}</div>
     </div>
