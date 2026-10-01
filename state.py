@@ -111,8 +111,14 @@ def sign_in_microsoft():
             time.sleep(4)
             break
     if chrome.poll() is None:
-        if WINDOWS:   # take Chrome's helper processes down with it, or they keep the profile locked
-            subprocess.run(["taskkill", "/PID", str(chrome.pid), "/T", "/F"], capture_output=True)
+        if WINDOWS:
+            # Ask Chrome to close its windows, so it writes the sign-in cookies to disk: a forced kill loses them.
+            # Only a Chrome that ignores that gets killed, helpers included (they would keep the profile locked).
+            subprocess.run(["taskkill", "/PID", str(chrome.pid), "/T"], capture_output=True)
+            try:
+                chrome.wait(timeout=20)
+            except subprocess.TimeoutExpired:
+                subprocess.run(["taskkill", "/PID", str(chrome.pid), "/T", "/F"], capture_output=True)
         else:
             chrome.terminate()
         chrome.wait(timeout=15)
