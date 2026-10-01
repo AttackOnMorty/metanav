@@ -222,6 +222,16 @@
   .rq-x { width: 30px; height: 30px; padding: 0; border: 2px solid #fff; border-radius: 50%; background: transparent; color: #fff; font-weight: 900; opacity: .35; transition: opacity .1s, transform .12s; }
   .rq.sel .rq-x, .rq:hover .rq-x, .rq-x:focus-visible { opacity: 1; }
   .rq-x:hover { background: #000; border-color: #000; transform: scale(1.15) rotate(-10deg); }
+  /* dismiss: not mine / won't do. A small corner ⊘ - a circle like ✓'s, slashed - that shows on the row under the cursor,
+     so it takes no room from titles */
+  .rq .rq-d { position: absolute; z-index: 3; top: -9px; right: 14px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
+    border: 2px solid #fff; border-radius: 50%; background: #000; color: #fff; opacity: 0; transition: opacity .1s; }
+  .rq .rq-d svg { width: 12px; height: 12px; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+  .rq.sel .rq-d, .rq:hover .rq-d, .rq .rq-d:focus-visible { opacity: 1; }
+  .rq .rq-d:hover { background: var(--red); }
+  .card-d { margin-left: auto; padding: 2px 10px; border: 2px solid #000; background: #fff; color: #000; font: 800 12px/1.2 var(--sans); transform: skewX(-12deg); opacity: .55; }
+  .card-d:hover, .card-d:focus-visible { opacity: 1; background: #000; color: #fff; }
+  .rq.done .st.dropped { font-size: 17px; }   /* DROPPED: left the list by the user's decision, not done */
   .rq.done { min-height: 40px; margin-bottom: 5px; padding-block: 2px; }
   .rq.done::before { background: rgba(10,10,10,.72); box-shadow: none; }
   .rq.done .st.done { font-size: 22px; }
@@ -412,7 +422,7 @@
     .ib-detail { margin: 8px 0 6px 8px; }
     .pc-sign { margin-left: 0; }
   }
-  @media (hover: none) { .rq-x { opacity: .7; } }
+  @media (hover: none) { .rq-x, .rq .rq-d { opacity: .7; } }
   @media (prefers-reduced-motion: reduce) {
     .goto, .sun .rays, .burst, .why.hot, .alert-k, .hud-sync::before, .tod > span, .tod::after, .ib-detail, .ib-msg, .ib-hd, .ib-foot, .ib-quote, .pc { animation: none !important; }
     .intro * { animation: none !important; }
@@ -531,8 +541,10 @@ function model() {
   const done = [
     ...(B.done || []).filter(d => !d.at || d.at >= dayStart).filter(d => !(d.id && manualShown.some(m => m.key === d.id)))
       .map(d => ({ what: d.what, url: d.url, label: (d.at && dayTime(d.at)) || d.when, at: d.at || '', new: !!d.new, effort: d.effort })),
-    ...manualShown.map(m => ({ what: m.title, url: m.url, label: dayTime(m.when), at: m.when, key: m.key, note: confirmed.get(m.key)?.what,
-      effort: m.effort || confirmed.get(m.key)?.effort })),
+    // a dismissed one stays too, stamped DROPPED: it left the list by the user's decision, not by being done
+    ...manualShown.map(m => m.dismissed ? { what: m.title, url: m.url, label: dayTime(m.when), at: m.when, key: m.key, dropped: true }
+      : { what: m.title, url: m.url, label: dayTime(m.when), at: m.when, key: m.key, note: confirmed.get(m.key)?.what,
+        effort: m.effort || confirmed.get(m.key)?.effort }),
   ].sort((a, b) => b.at.localeCompare(a.at));
 
   // what others owe, grouped by person; whoever is worth chasing now goes first, then the longest wait
@@ -583,6 +595,8 @@ function model() {
 // [data-nudge="key"]                     open / close the nudge composer for that item (openNudge)
 // [data-composer] > textarea + [data-send][data-url] + [data-cancel]
 // [data-tab="name"]                      toggle TAB.get().open
+// [data-dismiss] + dismissAttrs(item): not mine / won't do - hidden like done, and listed as DROPPED, not DONE!
+const dismissAttrs = x => doneAttrs(x).replace('data-done', 'data-dismiss');
 const doneAttrs = x => `data-done data-key="${e(keyOf(x))}" data-at="${e(actAt(x))}" data-title="${e(x.title || x.what)}" data-url="${e(x.url || '')}" data-effort="${e(x.effort || '')}"`;
 let openNudge = '';   // which item has its composer open (not persisted)
 const composer = (text, url, { cancellable = true, extra = '' } = {}) => `<div class="composer" data-composer>
@@ -604,13 +618,17 @@ const FRESH_RUN = (() => { try { const was = sessionStorage.getItem('tower:seen-
 let beforeDone = null;   // optional: async el => {} — a design's "done" animation, awaited before the re-render
 function start(render) {
   document.addEventListener('click', async ev => {
-    const t = ev.target.closest('[data-done], [data-restore], [data-nudge], [data-send], [data-cancel], [data-tab]');
+    const t = ev.target.closest('[data-done], [data-dismiss], [data-restore], [data-nudge], [data-send], [data-cancel], [data-tab]');
     if (!t) return;
     ev.preventDefault(); ev.stopPropagation();
     if (t.matches('[data-done]')) {
       if (beforeDone) await beforeDone(t);
       D = DONE.get();
       D[t.dataset.key] = { at: t.dataset.at, when: new Date().toISOString(), title: t.dataset.title, url: t.dataset.url, ...(t.dataset.effort && { effort: t.dataset.effort }) };
+      DONE.set(D);
+    } else if (t.matches('[data-dismiss]')) {
+      D = DONE.get();
+      D[t.dataset.key] = { at: t.dataset.at, when: new Date().toISOString(), title: t.dataset.title, url: t.dataset.url, dismissed: true };
       DONE.set(D);
     } else if (t.matches('[data-restore]')) {
       D = DONE.get(); delete D[t.dataset.restore]; DONE.set(D);
@@ -815,7 +833,8 @@ function card(V) {
   const title = ransom(t.title, keyOf(t));
   return `<article class="card" data-card>${EFFORT[t.effort] ? `<span class="no eff" aria-label="Effort: ${EFFORT[t.effort]}">${t.effort}</span>` : ''}
     <div class="card-kicker"><span class="ribbon">TARGET · DO THIS NOW</span>${flagHtml(flagOf(t))}
-      ${t.why ? `<span class="why ${t.urgency === 'high' ? 'hot' : ''}">${e(t.why)}</span>` : ''}</div>
+      ${t.why ? `<span class="why ${t.urgency === 'high' ? 'hot' : ''}">${e(t.why)}</span>` : ''}
+      <button class="card-d" ${dismissAttrs(t)} title="Not mine, or won't do">Dismiss</button></div>
     <h2 class="card-title">${t.url ? `<a ${linkOpen(t.url, names(t.who)[0])}>${title}</a>` : title}</h2>
     ${t.reason ? `<p class="reason">${e(t.reason)}</p>` : ''}
     ${body}
@@ -852,18 +871,19 @@ function queue(V) {
       ${q.why ? `<span class="rq-w">${e(q.why)}</span>` : '<span></span>'}
       ${EFFORT[q.effort] ? `<span class="rq-c" aria-label="Effort: ${EFFORT[q.effort]}">${q.effort}</span>` : '<span></span>'}
       <button class="rq-x" ${doneAttrs(q)} aria-label="Mark done">✓</button>
+      <button class="rq-d" ${dismissAttrs(q)} aria-label="Dismiss: not mine, or won't do" title="Dismiss: not mine, or won't do"><svg viewBox="0 0 12 12"><path d="M2.5 9.5l7-7"/></svg></button>
     </${tag}>`;
   }).join('');
   const doneRows = done.map((d, j) => {
     const tag = d.url ? 'a' : 'div';
     return `<${tag} class="rq done ${d.new ? 'fresh' : ''}" style="--i:${V.rest.length + j};--x:${X[(V.rest.length + j) % X.length]}px" ${linkOpen(d.url)}>
-      <span class="st done">DONE!</span>${d.note
+      ${d.dropped ? '<span class="st done dropped">DROPPED</span>' : '<span class="st done">DONE!</span>'}${d.note
         ? `<span class="rq-b"><span class="rq-t">${e(d.what)}</span><span class="rq-r">✓ ${e(d.note)}</span></span>`
         : `<span class="rq-t">${d.new ? '<span class="new-tag">NEW</span>' : ''}${e(d.what)}</span>`}<span class="rq-end"><span class="rq-w">${e(String(d.label || '').replace(/^(today|今天|手动)\s*·?\s*/i, ''))}</span>${d.key ? `<button class="rq-undo" data-restore="${e(d.key)}" aria-label="Undo">UNDO</button>` : ''}</span>
       ${EFFORT[d.effort] ? `<span class="rq-c" aria-label="Effort: ${EFFORT[d.effort]}">${d.effort}</span>` : ''}
     </${tag}>`;
   }).join('');
-  const head = V.rest.length ? `${collage('REQUESTS', 'sec-next', 'sm')}<span class="cnt">${V.rest.length}</span>` : `${collage('CLEARED', 'sec-done', 'sm')}<span class="cnt">${V.done.length}</span>`;
+  const head = V.rest.length ? `${collage('REQUESTS', 'sec-next', 'sm')}<span class="cnt">${V.rest.length}</span>` : `${collage('CLEARED', 'sec-done', 'sm')}<span class="cnt">${V.done.filter(d => !d.dropped).length}</span>`;
   return `<section class="req"><h3 class="sec">${head}</h3>${rows}${doneRows}</section>`;
 }
 
@@ -1063,7 +1083,7 @@ addEventListener('resize', () => { clearTimeout(relock); relock = setTimeout(loc
 document.fonts?.ready.then(lockRows);
 
 // The keyboard, like the game's controller: ↑↓ move the cursor in a column, ←→ switch columns, Enter confirms, Space
-// marks done, Esc backs out, R syncs. Enter on a Waiting On bar opens or closes the chat; ↓ then steps into its buttons,
+// marks done, X dismisses (not mine), Esc backs out, R syncs. Enter on a Waiting On bar opens or closes the chat; ↓ then steps into its buttons,
 // below it. Enter on the target steps into its buttons. In a row of buttons ←→ choose one and Enter presses it, like the
 // game's submenus. Moving the cursor never opens or closes anything: only Enter and Esc do. The cursor and the prompts show only while the keyboard is in use: the
 // mouse takes over again as soon as it moves. The left column is the target and the requests; the right, Waiting On and
@@ -1104,7 +1124,8 @@ function kbPaint(scroll) {
     : el.matches('.ib') ? [open ? 'Close' : 'Open', open ? 'Resolved' : '']
     : el.matches('.ph-post') ? ['Open', 'Got it'] : ['Open', 'Done'];
   const into = open && acts(el).length ? `<span>${DN}Buttons</span>` : '';
-  keys.innerHTML = `<span>${UD}${LR}Move</span>${into}${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
+  const dismiss = el.matches('[data-card], .rq') ? '<span><kbd>X</kbd>Dismiss</span>' : '';
+  keys.innerHTML = `<span>${UD}${LR}Move</span>${into}${enter ? `<span><kbd>⏎</kbd>${enter}</span>` : ''}${space ? `<span><kbd>Space</kbd>${space}</span>` : ''}${dismiss}<span><kbd>Esc</kbd>Back</span><span><kbd>R</kbd>Sync</span>`;
   keys.hidden = false;
 }
 document.addEventListener('keydown', ev => {
@@ -1114,14 +1135,14 @@ document.addEventListener('keydown', ev => {
     return;
   }
   const k = ev.key.length === 1 ? ev.key.toLowerCase() : ev.key;
-  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape', 'r'].includes(k)) return;
+  if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', ' ', 'Escape', 'r', 'x'].includes(k)) return;
   ev.preventDefault();
   hideGo();
   if (k === 'r') return document.querySelector('#app [data-refresh]:not([disabled])')?.click();
   if (!kb) { kb = { col: 0, i: 0 }; return kbPaint(true); }   // the first key only brings the cursor up
   const el = slots(kb.col)[kb.i];
   const click = x => x?.click();
-  if (el && kb.act != null && k !== ' ') {   // in a row of buttons
+  if (el && kb.act != null && k !== ' ' && k !== 'x') {   // in a row of buttons
     const list = acts(el);
     if (k === 'ArrowLeft') kb.act = Math.max(0, kb.act - 1);
     else if (k === 'ArrowRight') kb.act = Math.min(list.length - 1, kb.act + 1);
@@ -1152,6 +1173,9 @@ document.addEventListener('keydown', ev => {
     else if (el.matches('.rq')) click(el.querySelector('.rq-x'));
     else if (el.matches('.ph-post')) click(el.querySelector('[data-read]'));
     else if (el.matches('.ib') && el.classList.contains('sel')) { kb.act = null; click(el.querySelector('.o-done')); }
+  } else if (el && k === 'x') {
+    kb.act = null;
+    click(el.querySelector(el.matches('[data-card]') ? '.card-d' : '.rq-d'));
   }
   kbPaint(true);
 });
