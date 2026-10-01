@@ -98,10 +98,11 @@
   header.top { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px; align-items: start; margin-bottom: 26px; }
   .hud { cursor: default; }
   .hud-date { position: relative; display: inline-flex; align-items: flex-start; padding: 2px 58px 22px 8px; margin-left: 40px; }
-  .hud-date .m { position: relative; font: 50px/1 var(--anton); color: #000; -webkit-text-stroke: 8px #fff; paint-order: stroke fill; transform: rotate(-16deg) translateY(6px); margin-right: 4px; }
-  .hud-date .sl { position: relative; width: 10px; height: 54px; margin: 30px 6px 0 -2px; background: #000; box-shadow: 0 0 0 4px #fff; transform: skewX(-42deg); }   /* the slash between month and day */
+  .hud-date .md { display: inline-flex; align-items: flex-start; filter: url(#date-outline); }   /* month, slash and day share one thick white outline, as in the game */
+  .hud-date .m { position: relative; font: 50px/1 var(--anton); color: #000; transform: rotate(-16deg) translateY(6px); margin-right: 4px; }
+  .hud-date .sl { position: relative; width: 10px; height: 54px; margin: 30px 6px 0 -2px; background: #000; transform: skewX(-42deg); }   /* the slash between month and day */
   .hud-date .d { position: relative; display: inline-flex; }
-  .hud-date .d i { font: 110px/.9 var(--anton); font-style: normal; color: #000; -webkit-text-stroke: 10px #fff; paint-order: stroke fill; }
+  .hud-date .d i { font: 110px/.9 var(--anton); font-style: normal; color: #000; }
   .hud-date .d i:nth-child(1) { transform: rotate(-7deg) translateY(3px); }
   .hud-date .d i:nth-child(2) { transform: rotate(5deg) translateY(14px); margin-left: -5px; }
   .hud-date .wd { position: absolute; right: -10px; bottom: 4px; color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; font: 30px/1 var(--anton); padding: 3px 11px 1px;
@@ -441,6 +442,9 @@
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position: absolute" aria-hidden="true"><filter id="date-outline" x="-50%" y="-50%" width="200%" height="200%">
+  <feMorphology in="SourceAlpha" operator="dilate" radius="12" result="grown"/><feFlood flood-color="#fff"/><feComposite in2="grown" operator="in"/>
+  <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter></svg>
 <div class="sun" aria-hidden="true"><div class="rays"></div></div>
 <div class="bg" aria-hidden="true"><div class="slab"></div><div class="stripe"></div><div class="stripe w"></div><div class="dots"></div></div>
 <div class="wrap" id="app"></div>
@@ -780,8 +784,8 @@ function header(V) {
   const now = V.now;
   return `<header class="top">
     <div class="hud">
-      <div class="hud-date"><span class="m">${now.getMonth() + 1}</span><span class="sl"></span>
-        <span class="d">${String(now.getDate()).split('').map(x => `<i>${x}</i>`).join('')}</span><span class="wd">${WEEKDAY[now.getDay()]}</span></div>
+      <div class="hud-date"><span class="md"><span class="m">${now.getMonth() + 1}</span><span class="sl"></span>
+        <span class="d">${String(now.getDate()).split('').map(x => `<i>${x}</i>`).join('')}</span></span><span class="wd">${WEEKDAY[now.getDay()]}</span></div>
       <div class="hud-row"><span class="tod ${todFresh(now) ? 'fresh' : ''}">${TOD(now.getHours()).map(s => `<span>${s}</span>`).join('')}</span>${syncPill(V)}</div>
     </div>
     ${tracker(V)}
