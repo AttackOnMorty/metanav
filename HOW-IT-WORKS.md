@@ -5,7 +5,7 @@ Meta-Nav is one page that answers **"what should I do now?"** It reads your Outl
 This document follows one refresh from start to finish, then explains each part of the page. `INSTALL.md` sets it up; `JUDGE.md` holds the exact instructions the AI follows.
 
 ```
-  the hourly job, SYNC NOW, or metanav
+  the hour, SYNC NOW, or metanav
                    ▼   run.mjs runs these steps
   1. Collect   collect.mjs + fetch.mjs      ~25 s, no AI
                Outlook · Calendar · Teams · GitHub · Azure DevOps  →  inputs.json
@@ -22,7 +22,7 @@ This document follows one refresh from start to finish, then explains each part 
 
 ## 1. When it refreshes
 
-- **On a schedule.** A background job fires on the hour (launchd on macOS, Task Scheduler on Windows). `run.mjs` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If the computer was asleep on the hour, the job runs when it wakes.
+- **On a schedule.** Meta-Nav's background service (`state.mjs`, started at login by launchd on macOS or Task Scheduler on Windows) starts a run on the hour. `run.mjs` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If the computer was asleep on the hour, the run starts as soon as it wakes.
 - **On demand, at any hour.** Use the **SYNC NOW** button on the page, or type `metanav` in a terminal.
 - **One at a time.** A lock stops two runs overlapping. While a run works, the page shows **Syncing**.
 - **Incremental.** Each run starts from the previous run's judgement. It re-checks everything that was still open, and reads only what's new since the last run. The very first run reads the last 30 days (`lookback_days`), so an ask nobody answered three weeks ago still turns up.
@@ -131,7 +131,7 @@ Click a bar to open it:
 
 ## 6. Your clicks
 
-- **What gets saved.** ✓ (done), Resolved and Got it are saved by a small local service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your computer sees the same clicks.
+- **What gets saved.** ✓ (done), Resolved and Got it are saved by the same background service (`state.mjs`, on `127.0.0.1` only) into `state.json`. Every browser on your computer sees the same clicks.
 - **Ticked means closed.** The next run treats a ticked item as closed. If something new happens on it later, it comes back.
 - **Deleting received mail counts as done.** Archiving it does too.
 

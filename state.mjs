@@ -1,6 +1,8 @@
-// Meta-Nav's click store: the panel's "done", "resolved" and "Got it" clicks, kept in one file that every browser and
-// every run share. A page opened from disk can read files beside it but can't write any, so this small service writes
-// for it. It listens on 127.0.0.1 only; launchd (macOS) or Task Scheduler (Windows) starts it at login.
+// Meta-Nav's background service, started at login by launchd (macOS) or Task Scheduler (Windows):
+// - the hourly run: it starts run.mjs on the hour (run.mjs itself keeps to weekdays within config.hours);
+// - the click store: the panel's "done", "resolved" and "Got it" clicks, kept in one file that every browser and every
+//   run share. A page opened from disk can read files beside it but can't write any, so this service writes for it.
+// It listens on 127.0.0.1 only.
 //   POST /state   {"key": "tower:dismissed" | "tower:read", "value": {...}}   -> the whole state, as JSON
 //   POST /signin  {"source": "Azure DevOps" | "Outlook" | "Teams"}          -> {"status": "started" | "busy"}
 //                 The banner's SIGN IN button: a window to sign in, then a refresh.
@@ -32,11 +34,24 @@ function save(state) {
   write(join(OUT, 'state.js'), `window.towerState = ${JSON.stringify(state).replace(/<\//g, '<\\/')};\n`);
 }
 
-// a run now, whatever the hour - the same as `metanav` - so the banner goes as soon as a sign-in works
-function refresh() {
-  writeFileSync(join(OUT, '.manual'), '');
+// A run. `manual`: one the user asked for (SYNC NOW, `metanav`, a sign-in that worked) - run.mjs skips the hours for it.
+function start(manual) {
+  if (manual) writeFileSync(join(OUT, '.manual'), '');
   spawn(process.execPath, [join(SKILL, 'run.mjs')], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
 }
+const refresh = () => start(true);
+
+// On the hour, every hour. A timer looks twice a minute, so after the computer wakes up, the hour it slept through runs
+// straight away. Not when the service starts: logging in isn't the hour turning.
+const hourOf = d => `${d.toDateString()} ${d.getHours()}`;
+let lastHour = hourOf(new Date());
+setInterval(() => {
+  const h = hourOf(new Date());
+  if (h === lastHour) return;
+  lastHour = h;
+  // one run at a time (run.mjs locks too), and not while a sign-in window holds the browser profile
+  if (!existsSync(join(OUT, '.running')) && !signing.has('microsoft')) start(false);
+}, 30e3);
 
 // Outlook's mail page is titled "Mail - <name> - Outlook", and Teams "<view> | Microsoft Teams", only once you're past
 // the sign-in (Teams' own loading page is just "Microsoft Teams")

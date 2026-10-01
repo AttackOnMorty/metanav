@@ -33,34 +33,31 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
    - `ado`: leave it `null` unless the user's work is (also) in Azure DevOps. If it is, set it to `{ "base_url": "https://dev.azure.com/<org>" }`: Meta-Nav then reads their work items, reviews, pull requests and @mentions across that organisation. To also watch one release pipeline, make it `https://dev.azure.com/<org>/<project>` and add `"release_definition": <id>`. Then check `az` is installed and signed in to that organisation's account (`az account show`).
    - Keep `output_dir` (`~/metanav`) and `lookback_days` (30) unless the user says otherwise.
 
-5. **Set up the two background jobs:** the run, on the hour, and the click store (`state.mjs`), from login. Create `<OUT>/logs` first.
+5. **Set up the background service** (`state.mjs`): it starts a run on the hour, and keeps the panel's clicks. Create `<OUT>/logs` first.
 
    **macOS** (launchd):
-   - In `metanav.plist` and `metanav-state.plist`, replace `__PATH__` with a PATH for launchd: the directories holding `node`, the agent's CLI (`claude` or `codex`), `gh` (and `az` if `ado` is set), then `/usr/bin:/bin:/usr/sbin:/sbin`, without duplicates. Use each real binary's directory (for `claude` usually `~/.local/bin`), not a terminal's wrapper under `/var/folders` — `type -a claude` lists them all.
-   - In both, replace `__SKILL__` with `<SKILL>` and `__OUT__` with `<OUT>`. Copy them to `~/Library/LaunchAgents/local.metanav.plist` and `~/Library/LaunchAgents/local.metanav-state.plist`.
-   - Load both: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.metanav-state.plist`, then the same for `local.metanav.plist`.
+   - In `metanav.plist`, replace `__PATH__` with a PATH for launchd: the directories holding `node`, the agent's CLI (`claude` or `codex`), `gh` (and `az` if `ado` is set), then `/usr/bin:/bin:/usr/sbin:/sbin`, without duplicates. Use each real binary's directory (for `claude` usually `~/.local/bin`), not a terminal's wrapper under `/var/folders` — `type -a claude` lists them all.
+   - Replace `__SKILL__` with `<SKILL>` and `__OUT__` with `<OUT>`, save it as `~/Library/LaunchAgents/local.metanav.plist`, and load it: `launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/local.metanav.plist`.
 
-   **Windows** (Task Scheduler). Run this with `<SKILL>` filled in. `conhost --headless` keeps a console window from flashing up every hour:
+   **Windows** (Task Scheduler). Run this with `<SKILL>` filled in. `conhost --headless` keeps a console window from showing:
    ```powershell
    $skill = '<SKILL>'
    $node = (Get-Command node).Source
-   $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
-   $run = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$node`" `"$skill\run.mjs`""
-   Register-ScheduledTask -TaskName 'Meta-Nav' -Action $run -Settings $settings -Trigger (New-ScheduledTaskTrigger -Once -At (Get-Date -Minute 0 -Second 0) -RepetitionInterval (New-TimeSpan -Hours 1)) -Force
-   $state = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$node`" `"$skill\state.mjs`""
-   Register-ScheduledTask -TaskName 'Meta-Nav state' -Action $state -Settings $settings -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) -Force
-   Start-ScheduledTask -TaskName 'Meta-Nav state'
+   $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero) -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1)
+   $service = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"$node`" `"$skill\state.mjs`""
+   Register-ScheduledTask -TaskName 'Meta-Nav' -Action $service -Settings $settings -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME) -Force
+   Start-ScheduledTask -TaskName 'Meta-Nav'
    ```
-   The tasks run as the user, with their PATH, so `claude` or `codex`, `gh` and `az` are found as in their terminal.
+   The task runs as the user, with their PATH, so `claude` or `codex`, `gh` and `az` are found as in their terminal.
 
-   Then check the click store answers. macOS: `curl -s -X POST -H 'Origin: null' -d '{"key":"tower:read","value":{}}' http://127.0.0.1:47615/state`. Windows: `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/state -Body '{"key":"tower:read","value":{}}'`. It prints the state with a `rev`.
+   Then check the service answers. macOS: `curl -s -X POST -d '{"key":"tower:read","value":{}}' http://127.0.0.1:47615/state`. Windows: `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/state -Body '{"key":"tower:read","value":{}}'`. It prints the state with a `rev`.
 
 6. **Add the `metanav` command** (a refresh now). Check that `metanav` isn't already a command; if it is, use `metanav-sync` instead.
-   - **macOS:** append to `~/.zshrc`: `alias metanav='touch <OUT>/.manual && launchctl kickstart gui/$(id -u)/local.metanav && echo "metanav: refreshing, about 3 minutes"'`
+   - **macOS:** append to `~/.zshrc`: `alias metanav='curl -s -X POST -d "{}" http://127.0.0.1:47615/refresh >/dev/null && echo "metanav: refreshing, about 3 minutes"'`
    - **Windows:** append to the PowerShell profile (`$PROFILE`; create it if missing): `function metanav { Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/refresh -Body '{}' | Out-Null; 'metanav: refreshing, about 3 minutes' }`
 
 7. **Sign in to Microsoft 365, and the first run.** This part needs the user.
-   - Tell the user a Chrome window is about to open on Outlook and Teams, and that they should sign in there (and let it stay signed in; Teams may ask them to pick the account once). Then open it — macOS: `curl -s -X POST -H 'Origin: null' -d '{"source":"Outlook"}' http://127.0.0.1:47615/signin`; Windows: `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/signin -Body '{"source":"Outlook"}'`.
+   - Tell the user a Chrome window is about to open on Outlook and Teams, and that they should sign in there (and let it stay signed in; Teams may ask them to pick the account once). Then open it — macOS: `curl -s -X POST -d '{"source":"Outlook"}' http://127.0.0.1:47615/signin`; Windows: `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/signin -Body '{"source":"Outlook"}'`.
    - The window closes by itself a few seconds after both Outlook's mail page and Teams have loaded, and the first run starts on its own. It reads the last 30 days, so it takes about 8 minutes.
    - While it runs, ask the user to check Outlook on the web → Settings → General → Language and time: the language is English, the date format is day/month/year (e.g. `30/09/2026`), and the time format is 12-hour (`1:01 PM`). Meta-Nav reads dates as Outlook shows them.
    - When `<OUT>/.running` is gone, check the newest log in `<OUT>/logs/`: its `agent`, `is_error` and `result`. The result names any source that failed. If Outlook or Teams says "sign-in needed", run the sign-in again.
@@ -77,16 +74,14 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 macOS:
 ```bash
 launchctl bootout gui/$(id -u)/local.metanav
-launchctl bootout gui/$(id -u)/local.metanav-state
-rm ~/Library/LaunchAgents/local.metanav.plist ~/Library/LaunchAgents/local.metanav-state.plist
+rm ~/Library/LaunchAgents/local.metanav.plist
 rm -rf ~/.claude/skills/metanav ~/.agents/skills/metanav ~/metanav ~/Library/Caches/metanav
 # then remove the `metanav` alias from ~/.zshrc
 ```
 
 Windows (PowerShell):
 ```powershell
-Unregister-ScheduledTask -TaskName 'Meta-Nav' -Confirm:$false
-Stop-ScheduledTask -TaskName 'Meta-Nav state'; Unregister-ScheduledTask -TaskName 'Meta-Nav state' -Confirm:$false
+Stop-ScheduledTask -TaskName 'Meta-Nav'; Unregister-ScheduledTask -TaskName 'Meta-Nav' -Confirm:$false
 Remove-Item -Recurse -Force "$HOME\.claude\skills\metanav", "$HOME\.agents\skills\metanav", "$HOME\metanav", "$env:LOCALAPPDATA\metanav" -ErrorAction SilentlyContinue
 # then remove the `metanav` function from $PROFILE
 ```

@@ -4,13 +4,13 @@
 <dict>
   <key>Label</key>
   <string>local.metanav</string>
-  <!-- on the hour, every hour; run.mjs itself keeps to weekdays within config.hours.
-       Started through /bin/zsh, like the click store. The trailing `exit` keeps zsh from exec-ing node. -->
+  <!-- Meta-Nav's one background service (state.mjs): the hourly run and the panel's click store. Up from login,
+       restarted if it ever stops. Started through /bin/zsh; the trailing `exit` keeps zsh from exec-ing node. -->
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
     <string>-c</string>
-    <string>node __SKILL__/run.mjs; exit $?</string>
+    <string>node __SKILL__/state.mjs; exit $?</string>
   </array>
   <!-- launchd starts with a bare environment: the installer writes the user's PATH here (node, claude or codex, gh, az) -->
   <key>EnvironmentVariables</key>
@@ -18,16 +18,13 @@
     <key>PATH</key>
     <string>__PATH__</string>
   </dict>
-  <key>StartCalendarInterval</key>
-  <dict>
-    <key>Minute</key>
-    <integer>0</integer>
-  </dict>
   <key>RunAtLoad</key>
-  <false/>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
   <key>StandardOutPath</key>
-  <string>__OUT__/logs/launchd.log</string>
+  <string>__OUT__/logs/service.log</string>
   <key>StandardErrorPath</key>
-  <string>__OUT__/logs/launchd.log</string>
+  <string>__OUT__/logs/service.log</string>
 </dict>
 </plist>
