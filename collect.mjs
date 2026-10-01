@@ -65,7 +65,16 @@ const CALENDAR = `[...new Set([...document.querySelectorAll('[aria-label]')].map
 // After a quiet spell Outlook and Teams pass through Microsoft's sign-in page to renew the session and come straight back.
 // Give it 20 seconds; still there means a real sign-in is needed.
 async function signedIn(page) {
-  for (let i = 0; i < 20 && /login\.microsoftonline\.com/.test(page.url()); i++) await sleep(1000);
+  let picked = false;
+  for (let i = 0; i < 20 && /login\.microsoftonline\.com/.test(page.url()); i++) {
+    // A headless Chrome gets no desktop single sign-on, so Microsoft may stop at "Pick an account" with the
+    // user's account marked "Signed in". The session is good: picking it finishes the sign-in with no password.
+    if (!picked && i >= 2) {
+      const tile = page.locator('[data-test-id]', { hasText: 'Signed in' }).first();
+      if (await tile.count().catch(() => 0)) { picked = true; await tile.click({ timeout: 3000 }).catch(() => { picked = false; }); }
+    }
+    await sleep(1000);
+  }
   return !/login\.microsoftonline\.com/.test(page.url());
 }
 
