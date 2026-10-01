@@ -114,7 +114,7 @@ The page doesn't show these. When the order looks wrong, they tell you which rul
 - **A status on the left**, in this order of preference: `NEW!` (appeared since the last run), `UPDATE` (something happened on it), `URGENT`, `DEADLINE`. Otherwise, how long it has been yours, as `3d` or `TODAY`.
 - **The title**, with one line of reason under it. Hover over a row to read both in full.
 - **A short tag saying why it's ranked there**, such as "Alex is blocked" or "Sprint ends 13/10".
-- **The difficulty letter**, and a ✓ to mark it done. The DROP tag that appears on a row's corner drops it instead: not yours, or not going to happen (the target card has a Drop button).
+- **The difficulty letter.** Hover over a row and its buttons take the letter's place: ✓ marks it done, ✕ drops it — not yours, or not going to happen. The target card has the same two, as the TAKE IT DONE stamp and a Drop button beside it.
 
 At the bottom, today's finished items stay as grey `DONE!` rows with their difficulty letter, and dropped ones as `DROPPED`. A row you ticked yourself keeps **UNDO**. When the next run confirms what happened, it adds a note under your tick.
 
