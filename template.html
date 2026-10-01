@@ -1138,7 +1138,7 @@ document.addEventListener('keydown', ev => {
   ev.preventDefault();
   hideGo();
   if (k === 'r') return document.querySelector('#app [data-refresh]:not([disabled])')?.click();
-  if (!kb) { kb = { col: 0, i: 0 }; return kbPaint(true); }   // the first key only brings the cursor up
+  if (!kb) { if (k !== 'Escape') { kb = { col: 0, i: 0 }; kbPaint(true); } return; }   // the first key only brings the cursor up (Esc never does)
   const el = slots(kb.col)[kb.i];
   const click = x => x?.click();
   if (el && kb.act != null && k !== ' ' && k !== 'x') {   // in a row of buttons
