@@ -12,7 +12,7 @@ It listens on 127.0.0.1 only; launchd starts it at login and restarts it if it s
                 The panel's SYNC button: a run now, whatever the hour (busy if one is running, or a sign-in window is open).
 
 Writes:
-  <output_dir>/state.json   read by each run (SKILL.md, step 5)
+  <output_dir>/state.json   read by each run (JUDGE.md, step 5)
   <output_dir>/state.js     the same, loaded by the page with a <script> tag (a page on disk can't fetch files)
 """
 import hashlib

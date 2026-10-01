@@ -1,6 +1,6 @@
 # Meta-Nav
 
-**One page that tells you what to do next.** Every hour on weekdays, a Claude Code skill reads your Outlook mail and calendar, your Teams chats and GitHub (and, if you like, one Azure DevOps release pipeline). It works out what you have to do, ranks it by cost of delay — who's blocked on you, what's due, who's been waiting longest — and writes a local HTML page in a Persona 5 style:
+**One page that tells you what to do next.** Every hour on weekdays, a skill for Claude Code or Codex reads your Outlook mail and calendar, your Teams chats and GitHub (and, if you like, one Azure DevOps release pipeline). It works out what you have to do, ranks it by cost of delay — who's blocked on you, what's due, who's been waiting longest — and writes a local HTML page in a Persona 5 style:
 
 - **Target**: the one most important thing, why it's first, and a button to start it.
 - **Requests**: the rest of your to-dos, ranked, with the reason for each, how long each has been yours, and a difficulty letter (D minutes … A a day or more). What you finished today stays at the bottom, stamped `DONE!`.
@@ -20,14 +20,14 @@ Tick an item's circle to mark it done; if something new happens on it later, it 
 | GitHub | `gh`: your open PRs, review requests, the issues assigned to you on the current sprint board, and where someone @mentioned you. |
 | Azure DevOps (optional) | `az`: the latest release of one pipeline. |
 
-A script collects everything in about 25 seconds; then Claude (Opus by default) judges it. Each run is incremental: it starts from the previous run's judgement, re-checks what was still open, and judges only what's new. A whole run takes 2–4 minutes.
+A script collects everything in about 25 seconds; then an AI judges it — Claude Code (Opus) or Codex, whichever you use. It only reads the collected files and writes one result: no network, no shell. Each run is incremental: it starts from the previous run's judgement, re-checks what was still open, and judges only what's new. A whole run takes 2–4 minutes.
 
 **`HOW-IT-WORKS.md`** walks through the whole flow: when it refreshes, what each source gives, how the AI decides what's yours and how it ranks it, and what every part of the page means.
 
 ## What you need
 
 - **macOS.** Scheduling uses `launchd`.
-- **Claude Code**, signed in. Scheduled runs use auto permission mode, so they run unattended.
+- **Claude Code** or **Codex**, signed in. Each run calls it once, unattended, to judge.
 - **Google Chrome** in `/Applications`, **Node.js** 18+, `jq`, and `python3`.
 - **`gh`**, signed in with the `read:project` scope (for sprint board status). `az` only if you want an Azure DevOps pipeline.
 - A Microsoft 365 account you can use in Outlook and Teams on the web. You sign in once, in a Chrome window Meta-Nav opens for you.
@@ -36,17 +36,28 @@ A script collects everything in about 25 seconds; then Claude (Opus by default) 
 
 ## Install
 
-Paste this into Claude Code (for a fork, use your fork's URL):
+Paste one of these (for a fork, use your fork's URL).
+
+Into **Claude Code**:
 
 ```
 Install Meta-Nav: clone https://github.com/AttackOnMorty/metanav into ~/.claude/skills/metanav, then follow its INSTALL.md.
 ```
 
-Claude clones it, checks what you need, asks for your settings, sets up the two background jobs, and opens a Chrome window for your Microsoft sign-in. Then the first run reads your last 30 days, which takes about 8 minutes.
+Into **Codex**:
+
+```
+Install Meta-Nav: clone https://github.com/AttackOnMorty/metanav into ~/.agents/skills/metanav, then follow its INSTALL.md.
+```
+
+It clones it, checks what you need, asks for your settings, sets up the two background jobs, and opens a Chrome window for your Microsoft sign-in. Then the first run reads your last 30 days, which takes about 8 minutes.
 
 ## Cost
 
-Each run makes one `claude -p` call with Opus: roughly **$0.40–1.20 of usage per run**, 2–4 minutes each; the first run, which reads 30 days, about $2.50 and 8 minutes. Hourly from 9:00 to 18:00 on weekdays is 10 runs a day. To run less often, narrow `hours` in `config.json`. `judge_model: "sonnet"` costs about a third and runs twice as fast, but follows the rules less reliably — it tends to copy the last run's items instead of re-judging them.
+Each run calls the judge once. Hourly from 9:00 to 18:00 on weekdays is 10 runs a day; to run less often, narrow `hours` in `config.json`.
+
+- **Claude Code with Opus:** roughly **$0.40–1.20 of usage per run**, 2–4 minutes each; the first run, which reads 30 days, about $2.50 and 8 minutes. `judge_model: "sonnet"` costs about a third and runs twice as fast, but follows the rules less reliably — it tends to copy the last run's items instead of re-judging them.
+- **Codex:** counts against your ChatGPT plan's Codex usage instead. The first run takes about 11 minutes; an hourly one, 2–3.
 
 ## Privacy
 
@@ -71,6 +82,6 @@ The collected mail and chats are deleted at the end of every run.
 launchctl bootout gui/$(id -u)/local.metanav
 launchctl bootout gui/$(id -u)/local.metanav-state
 rm ~/Library/LaunchAgents/local.metanav.plist ~/Library/LaunchAgents/local.metanav-state.plist
-rm -rf ~/.claude/skills/metanav ~/metanav ~/Library/Caches/metanav
+rm -rf ~/.claude/skills/metanav ~/.agents/skills/metanav ~/metanav ~/Library/Caches/metanav
 # then remove the `metanav` alias from ~/.zshrc
 ```

@@ -2,8 +2,8 @@
 """Render brief.json into the work panel and keep the run history.
 
 Usage: render.py <brief.json> [inputs.json]   -> prints the panel path (work and review_requests come from the inputs)
-       render.py --syncing        repaint the last result as "syncing" (run.sh, when a run starts)
-       render.py --idle           repaint the last result without it (run.sh, when a run failed)
+       render.py --syncing        repaint the last result as "syncing" (run.mjs, when a run starts)
+       render.py --idle           repaint the last result without it (run.mjs, when a run failed)
 
 Writes:
   <output_dir>/index.html          the panel (fixed path; the open page reloads itself when stamp.js changes)

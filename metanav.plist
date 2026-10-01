@@ -4,12 +4,20 @@
 <dict>
   <key>Label</key>
   <string>local.metanav</string>
+  <!-- on the hour, every hour; run.mjs itself keeps to weekdays within config.hours.
+       Started through /bin/zsh, like the click store. The trailing `exit` keeps zsh from exec-ing node. -->
   <key>ProgramArguments</key>
   <array>
     <string>/bin/zsh</string>
-    <string>__HOME__/.claude/skills/metanav/run.sh</string>
+    <string>-c</string>
+    <string>node __SKILL__/run.mjs; exit $?</string>
   </array>
-  <!-- on the hour, every hour; run.sh itself keeps to weekdays within config.hours -->
+  <!-- launchd starts with a bare environment: the installer writes the user's PATH here (node, claude or codex, gh, az) -->
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>__PATH__</string>
+  </dict>
   <key>StartCalendarInterval</key>
   <dict>
     <key>Minute</key>

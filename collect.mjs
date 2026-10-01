@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Meta-Nav's collector: reads Outlook (mail folders + today's calendar), Teams, and GitHub / Azure DevOps (fetch.sh, alongside
-// the browser) in one go, with no model in the loop, and writes one JSON file for the run to judge (SKILL.md, step 1).
+// the browser) in one go, with no model in the loop, and writes one JSON file for the run to judge (JUDGE.md, step 1).
 //
 // Usage: node collect.mjs <SINCE> <LOOKBACK> <first run: yes|no> <PREV run json, or ""> <out.json>
 //
@@ -216,7 +216,7 @@ function fromPrev(file) {
     const p = JSON.parse(readFileSync(file, 'utf8'));
     const items = ['queue', 'waiting', 'highlights'].flatMap(s => p[s] || []);
     return {
-      // received mail only: Sent loops don't close by deletion (SKILL.md, 3a)
+      // received mail only: Sent loops don't close by deletion (JUDGE.md, 3a)
       mail_ids: items.filter(x => x.source === 'mail' && !/sentitems/.test(x.url || '')).map(x => x.id).filter(Boolean),
       urls: items.flatMap(x => [x.url, ...(x.actions || []).map(a => a.url)]).filter(Boolean),
     };

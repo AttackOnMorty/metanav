@@ -2,16 +2,16 @@
 
 Meta-Nav is one page that answers **"what should I do now?"** It reads your Outlook mail and calendar, your Teams chats, GitHub and (optionally) one Azure DevOps pipeline. An AI judges what's yours to do, what others owe you and what's worth knowing, ranks your to-dos by the cost of delay, and writes it all into a local page styled after Persona 5.
 
-This document follows one refresh from start to finish, then explains each part of the page. `README.md` covers what you need and what it costs; `INSTALL.md` sets it up; `SKILL.md` holds the exact instructions the AI follows.
+This document follows one refresh from start to finish, then explains each part of the page. `README.md` covers what you need and what it costs; `INSTALL.md` sets it up; `JUDGE.md` holds the exact instructions the AI follows.
 
 ```
   launchd, hourly ─┐
   SYNC NOW / metanav ─┤
-                   ▼
+                   ▼   run.mjs runs these steps
   1. Collect   collect.mjs + fetch.sh       ~25 s, no AI
                Outlook · Calendar · Teams · GitHub · Azure DevOps  →  inputs.json
                    ▼
-  2. Judge     claude -p /metanav (Opus)     ~2–4 min
+  2. Judge     Claude Code or Codex, JUDGE.md  ~2–10 min
                inputs + the previous run + your clicks  →  brief.json
                    ▼
   3. Render    render.py                     →  index.html, stamp.js, runs/<time>.json
@@ -23,7 +23,7 @@ This document follows one refresh from start to finish, then explains each part 
 
 ## 1. When it refreshes
 
-- **On a schedule.** A launchd job fires on the hour. `run.sh` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If your Mac was asleep on the hour, launchd runs it when the Mac wakes.
+- **On a schedule.** A launchd job fires on the hour. `run.mjs` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If your Mac was asleep on the hour, launchd runs it when the Mac wakes.
 - **On demand, at any hour.** Use the **SYNC NOW** button on the page, or type `metanav` in a terminal.
 - **One at a time.** A lock stops two runs overlapping. While a run works, the page shows **Syncing**.
 - **Incremental.** Each run starts from the previous run's judgement. It re-checks everything that was still open, and reads only what's new since the last run. The very first run reads the last 30 days (`lookback_days`), so an ask nobody answered three weeks ago still turns up.
@@ -45,7 +45,7 @@ If Microsoft asks you to sign in again, that source is marked failed and the pag
 
 ## 3. Judging (the AI)
 
-Claude (Opus by default, `judge_model` in `config.json`) reads the inputs, the previous run's result and your clicks. It sorts everything into four lists:
+The judge — Claude Code (Opus by default) or Codex, set by `agent` and `judge_model` in `config.json` — reads the inputs, the previous run's result and your clicks. It can only read files and write its one result file: no network, no shell. It sorts everything into four lists:
 
 | List | On the page | What goes in |
 | --- | --- | --- |
@@ -148,7 +148,7 @@ Click a bar to open it:
 | `~/metanav/logs/` | Each run's log, kept 7 days. `result` is the run's own summary. |
 | `~/metanav/state.json` | Your clicks. |
 | `~/Library/Caches/metanav/` | Meta-Nav's own Chrome profile, with your Microsoft sign-in. |
-| `~/.claude/skills/metanav/` | The skill: `SKILL.md` (the AI's instructions), `config.json`, and the scripts. |
+| `~/.claude/skills/metanav/` (or `~/.agents/skills/metanav/` with Codex) | The skill: `run.mjs` (the runner), `JUDGE.md` (the judge's instructions), `config.json`, and the scripts. |
 
 ## 8. When something looks off
 
