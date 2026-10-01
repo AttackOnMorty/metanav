@@ -21,13 +21,13 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 
 4. **Write `config.json`.** Copy `config.example.json` to `config.json` and ask the user for each value:
    - `user.name`, and `user.short_name`, which is how the user appears in chats.
-   - `github_owner`: the GitHub org the user's work lives in.
+   - `github.org`: the GitHub organisation the user's work lives in.
    - `mail.received_folders`: Inbox (already filled in), plus every Inbox subfolder the user's rules file work mail into. For each subfolder, ask the user to open it in Outlook on the web and paste the address bar's URL; use the folder name exactly as Outlook shows it.
    - `teams.skip_chats`: bot or reminder chats to skip, by their name in Teams (e.g. `Workflows`).
    - `hours`: when scheduled runs happen, weekdays, on the hour. The default is 9 to 18.
    - `agent`: `"claude"` if you are Claude Code, `"codex"` if you are Codex — the agent each run calls to judge.
    - `judge_model`: for Claude, `"opus"` (`"sonnet"` is cheaper and faster but follows the rules less reliably). For Codex, leave it `""` for Codex's default model, or name one.
-   - `ado`: leave it `null` unless the user's work is (also) in Azure DevOps. If it is, set it to `true`: Meta-Nav then reads their work items, reviews, pull requests and @mentions in every organisation their account belongs to. Then check `az` is installed and signed in with that account (`az account show`).
+   - `azure_devops.enabled`: leave it `false` unless the user's work is (also) in Azure DevOps. If it is, set it to `true`: Meta-Nav then reads their work items, reviews, pull requests and @mentions in every organisation their account belongs to. Then check `az` is installed and signed in with that account (`az account show`).
 
 5. **Set up the background service** (`state.mjs`): it starts a run on the hour, and keeps the panel's clicks. Create `<OUT>/logs` first.
 

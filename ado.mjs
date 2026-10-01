@@ -11,7 +11,7 @@ const daysSince = t => Math.floor((Date.now() - Date.parse(t)) / 864e5);
 const name = u => u?.displayName?.replace(/\s*\[[^\]]*\]$/, '') || null;   // "Sam Lee [Acme]" -> "Sam Lee"
 
 export async function fromAdo(SINCE, LOOKBACK) {
-  if (!config.ado) return { ok: true, skipped: true };
+  if (!config.azure_devops?.enabled) return { ok: true, skipped: true };
   // every organisation the signed-in account is a member of; one that can't be read doesn't hold up the others
   const profile = await ado('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1');
   const orgs = ((await ado(`https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.1`)).value || [])

@@ -216,7 +216,7 @@ Write it to `BRIEF`, the whole file at once, as valid JSON.
 ```
 
 Don't set `new` or `updated` — `run.mjs` computes both against the previous run from `id` and `last_activity`. Mail items: `"id": "<convid>"`; Teams items: `"id": "<conversation id>/<message id>"`; GitHub items: the PR/issue URL.
-`sources`: one entry each for **Outlook, Teams, GitHub**, and **Azure DevOps** when `config.ado` is set; `ok: false` with a short `note` whenever one failed or was skipped. The page shows a red banner for any failed source — a quiet panel must mean "nothing happened", never "didn't look".
+`sources`: one entry each for **Outlook, Teams, GitHub**, and **Azure DevOps** when `config.azure_devops.enabled` is on; `ok: false` with a short `note` whenever one failed or was skipped. The page shows a red banner for any failed source — a quiet panel must mean "nothing happened", never "didn't look".
 
 ## Step 7: Finish
 

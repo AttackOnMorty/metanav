@@ -3,8 +3,12 @@
     "name": "Jane Doe",
     "short_name": "Jane"
   },
-  "github_owner": "your-github-org",
-  "ado": null,
+  "github": {
+    "org": "your-github-org"
+  },
+  "azure_devops": {
+    "enabled": false
+  },
   "mail": {
     "received_folders": [
       {
