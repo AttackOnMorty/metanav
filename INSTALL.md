@@ -53,6 +53,16 @@ You're reading this because the user asked you to install Meta-Nav. Work through
 
 8. **Finish.** Summarise what was installed and where. Remind the user:
    - SYNC NOW on the panel, or `metanav` in a new terminal, refreshes on demand;
-   - what a run costs, from the README (10 runs a working day);
+   - what a run costs (README, "Cost");
    - `HOW-IT-WORKS.md` explains what the page shows and how it ranks;
-   - how to uninstall, from the README.
+   - how to uninstall (the end of this file).
+
+## Uninstall
+
+```bash
+launchctl bootout gui/$(id -u)/local.metanav
+launchctl bootout gui/$(id -u)/local.metanav-state
+rm ~/Library/LaunchAgents/local.metanav.plist ~/Library/LaunchAgents/local.metanav-state.plist
+rm -rf ~/.claude/skills/metanav ~/.agents/skills/metanav ~/metanav ~/Library/Caches/metanav
+# then remove the `metanav` alias from ~/.zshrc
+```

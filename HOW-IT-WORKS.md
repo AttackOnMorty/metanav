@@ -2,7 +2,7 @@
 
 Meta-Nav is one page that answers **"what should I do now?"** It reads your Outlook mail and calendar, your Teams chats, GitHub and (optionally) one Azure DevOps pipeline. An AI judges what's yours to do, what others owe you and what's worth knowing, ranks your to-dos by the cost of delay, and writes it all into a local page styled after Persona 5.
 
-This document follows one refresh from start to finish, then explains each part of the page. `README.md` covers what you need and what it costs; `INSTALL.md` sets it up; `JUDGE.md` holds the exact instructions the AI follows.
+This document follows one refresh from start to finish, then explains each part of the page. `INSTALL.md` sets it up; `JUDGE.md` holds the exact instructions the AI follows.
 
 ```
   launchd, hourly ─┐
