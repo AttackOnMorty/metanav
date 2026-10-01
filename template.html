@@ -107,10 +107,10 @@
   .hud-date .d i { font: 110px/.9 var(--anton); font-style: normal; paint-order: stroke fill; }
   .hud-date .d i:nth-child(1) { color: #fff; -webkit-text-stroke: 6px #000; transform: rotate(-7deg) translateY(3px); }
   .hud-date .d i:nth-child(2) { color: #000; -webkit-text-stroke: 6px #fff; transform: rotate(5deg) translateY(14px); margin-left: -5px; }
-  .hud-date .wd { position: absolute; right: 40px; bottom: 4px; background: #fff; color: #000; font: 30px/1 var(--anton); padding: 3px 11px 1px;
+  .hud-date .wd { position: absolute; right: 8px; bottom: 4px; background: #fff; color: #000; font: 30px/1 var(--anton); padding: 3px 11px 1px;
     transform: rotate(-10deg) skewX(-10deg); box-shadow: 4px 4px 0 #000; }
   .hud-row { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; margin-top: 4px; }
-  .tod { font: 900 28px/1.02 var(--sans); color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; transform: rotate(-10deg); }
+  .tod { font: 900 28px/1.02 var(--sans); color: #fff; -webkit-text-stroke: 6px #000; paint-order: stroke fill; transform: translate(-8px, -12px) rotate(-10deg); }   /* tucked up under the date's left, as in the game */
   .tod span { display: block; } .tod span + span { margin-left: 1em; }
   .tod { position: relative; }
   .tod.fresh > span { animation: todIn .42s .16s cubic-bezier(.2,1.6,.4,1) both; }
