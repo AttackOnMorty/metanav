@@ -155,7 +155,7 @@ Rank by cost, not by how urgent something feels: a loud, recent ask with little 
 
 Every queue item states its rank reason twice:
 - `why` — a short tag for the list, ≤ 20 chars: "Alex is blocked", "Due today", "Promised Rob". No age — the panel shows how long it has been open.
-- `reason` — one sentence for the focus card, ≤ 90 chars: "He finished the fixes on 24/9; all three PRs need your review to merge."
+- `reason` — one sentence for the focus card, ≤ 90 chars: "He finished the fixes on 9/24; all three PRs need your review to merge."
 
 **Write the ranking down**, so a wrong order can be traced to the rule behind it. The panel doesn't show these; they stay in `runs/`.
 - `cost` on every queue item — one sentence: who another day's delay affects and how much, whether it grows with waiting, and for a deadline the slack left. "Prod users get bare links every day; not today's project." Judge it for each item before ordering: the order follows from `cost` and `effort`.
@@ -178,7 +178,7 @@ And `actions`: 1–2 buttons that start the work, first is the main one — `{ "
 | `headline` | not shown | Terminal summary only. |
 | `cost` / `tradeoffs` | not shown | The ranking, see 5c. |
 
-No emoji; no repeating the source ("On Teams, …") — the link already goes there. **What the run writes in its own words is English** — `title`, `what`, `why`, `reason`, `detail`, `where`, `due`, action `label`s, `done` rows, `sources` notes, `headline`, `cost`, `tradeoffs` — even when the source message was in another language. **People's words stay in their language:** `quote` and `thread` are what they wrote, untranslated, and a `nudge` is sent to them, so it's in the conversation's language. Names stay as people spell them. Dates in `due`: weekday + day/month, "Tue 29/9". A time that isn't today carries its day — "yesterday 12:10", "Mon 12:10"; a bare time always means today.
+No emoji; no repeating the source ("On Teams, …") — the link already goes there. **What the run writes in its own words is English** — `title`, `what`, `why`, `reason`, `detail`, `where`, `due`, action `label`s, `done` rows, `sources` notes, `headline`, `cost`, `tradeoffs` — even when the source message was in another language. **People's words stay in their language:** `quote` and `thread` are what they wrote, untranslated, and a `nudge` is sent to them, so it's in the conversation's language. Names stay as people spell them. Dates are month/day, as in the panel's date: `due` is weekday + month/day, "Tue 9/29". A time that isn't today carries its day — "yesterday 12:10", "Mon 12:10"; a bare time always means today.
 **`url` goes to where the ask or update was made** — the comment (`comments[].url`), the Teams message, the review (`latest_feedback_url`) — not just the issue, PR or chat it sits in; an action can still open the whole issue or PR. Mail outside the Inbox can only open its folder (3a).
 
 ## Step 6: Compose `brief.json`
@@ -195,8 +195,8 @@ Write it to `BRIEF`, the whole file at once, as valid JSON.
   "tradeoffs": ["Where the ranking rules conflicted, which won and why."],
   "queue": [
     { "id": "...", "source": "github|teams|mail|ado", "title": "Re-review #1796 #1800 #1801",
-      "why": "Alex is blocked", "reason": "He finished the fixes on 24/9; all three PRs need your review to merge.",
-      "who": ["Alex"], "urgency": "high|normal", "effort": "D|C|B|A", "due": "optional, e.g. Tue 29/9",
+      "why": "Alex is blocked", "reason": "He finished the fixes on 9/24; all three PRs need your review to merge.",
+      "who": ["Alex"], "urgency": "high|normal", "effort": "D|C|B|A", "due": "optional, e.g. Tue 9/29",
       "cost": "Alex can't merge three PRs until you review; grows each day he waits.",
       "url": "...", "actions": [ { "label": "Open PR", "url": "..." }, { "label": "Reply to Alex in Teams", "url": "msteams:..." } ],
       "since": "<ISO: when it became theirs to do — the ask, the promise, a GitHub item's `since`>", "last_activity": "<ISO>" }
