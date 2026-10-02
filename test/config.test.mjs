@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalise } from '../config.mjs';
+import { normalise } from '../scripts/lib/config.mjs';
 
 const minimal = { user: { name: 'Jane Doe', short_name: 'Jane' }, github: { org: 'acme' } };
 

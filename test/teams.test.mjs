@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { conversations } from '../teams.mjs';
+import { conversations } from '../scripts/collect/teams.mjs';
 
 // What readCache() takes out of Teams' cache, in its shape
 const t = (d, h = 9) => Date.UTC(2026, 8, d, h);   // September 2026

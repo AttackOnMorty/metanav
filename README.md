@@ -34,4 +34,4 @@ Install Meta-Nav by following https://raw.githubusercontent.com/AttackOnMorty/me
 - The keyboard works like a game controller: arrows, Enter, Space for done, X to drop, Esc to back out, T for tactics.
 - Read-only: nothing is sent or marked read, and everything stays on your computer.
 
-How it works: [HOW-IT-WORKS.md](HOW-IT-WORKS.md). Uninstall: end of [INSTALL.md](INSTALL.md).
+How it works: [HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md). Uninstall: end of [INSTALL.md](INSTALL.md).

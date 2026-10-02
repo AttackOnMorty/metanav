@@ -2,7 +2,7 @@
 // on your review, your own pull requests' next step, and where someone @mentioned you - in each organisation listed in
 // config.azure_devops.orgs. Deterministic: it fetches, and codehost.mjs decides what the answers mean, in GitHub's shapes.
 import { BODY, adoCi, adoReview, adoReviewWait, carriedOver, comment, daysSince, freshFeedback, workTree } from './codehost.mjs';
-import { ado, config } from './common.mjs';
+import { ado, config } from '../lib/common.mjs';
 
 const V = 'api-version=7.1';
 const text = html => String(html || '').replace(/<br\s*\/?>|<\/(p|div|li)>/gi, '\n').replace(/<[^>]+>/g, '')

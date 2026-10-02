@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { githubLists } from '../codehost.mjs';
+import { githubLists } from '../scripts/collect/codehost.mjs';
 
-// GitHub's GraphQL answer, in the shape fetch.mjs asks for, with only what each test needs
+// GitHub's GraphQL answer, in the shape github.mjs asks for, with only what each test needs
 const ME = 'jane';
 const pr = (n, over = {}) => ({
   number: n, title: `PR ${n}`, url: `https://github.com/acme/api/pull/${n}`, createdAt: '2026-09-28T00:00:00Z', isDraft: false,

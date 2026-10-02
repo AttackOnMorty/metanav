@@ -2,18 +2,18 @@
 
 Meta-Nav is one page that answers **"what should I do now?"** It reads your Outlook mail and calendar, your Teams chats, GitHub and (optionally) Azure DevOps. An AI judges what's yours to do, what others owe you and what's worth knowing, ranks your to-dos by the cost of delay, and writes it all into a local page styled after Persona 5.
 
-This document follows one refresh from start to finish, then explains each part of the page. `INSTALL.md` sets it up; `JUDGE.md` holds the exact instructions the AI follows.
+This document follows one refresh from start to finish, then explains each part of the page. `INSTALL.md` sets it up; `references/JUDGE.md` holds the exact instructions the AI follows.
 
 ```
   the hour, SYNC NOW, or metanav
-                   ▼   run.mjs runs these steps
-  1. Collect   collect.mjs + fetch.mjs      ~25 s, no AI
+                   ▼   scripts/run.mjs runs these steps
+  1. Collect   scripts/collect/             ~25 s, no AI
                Outlook · Calendar · Teams · GitHub · Azure DevOps  →  inputs.json
                    ▼
-  2. Judge     Claude Code or Codex, JUDGE.md  ~2–10 min
+  2. Judge     Claude Code or Codex, references/JUDGE.md  ~2–10 min
                inputs + the previous run + your clicks  →  brief.json
                    ▼
-  3. Render    render.mjs                    →  index.html, stamp.js, runs/<time>.json
+  3. Render    scripts/panel/render.mjs     →  index.html, stamp.js, runs/<time>.json
                    ▼
   4. The page  reloads itself; your clicks go to state.json and into the next run
 ```
@@ -164,7 +164,7 @@ Click a bar to open it:
 | `~/metanav/logs/` | Each run's log, kept 7 days. `result` is the run's own summary. |
 | `~/metanav/state.json` | Your clicks and tactics. |
 | `~/Library/Caches/metanav/` (Windows: `%LOCALAPPDATA%\metanav\`) | Meta-Nav's own Chrome profile, with your Microsoft sign-in. |
-| `~/.claude/skills/metanav/` (or `~/.agents/skills/metanav/` with Codex) | The skill: `run.mjs` (the runner), `JUDGE.md` (the judge's instructions), `config.json`, and the scripts. |
+| `~/.claude/skills/metanav/` (or `~/.agents/skills/metanav/` with Codex) | The skill: `config.json`, `scripts/` (`run.mjs` the runner, `state.mjs` the background service, and the rest), `references/JUDGE.md` (the judge's instructions) and `assets/template.html` (the page). |
 
 ## 8. When something looks off
 

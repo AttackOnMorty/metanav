@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { intake } from '../intake.mjs';
+import { intake } from '../scripts/judge/intake.mjs';
 
 const ok = {
   collected_at: '2026-10-02T03:55:12.345Z',

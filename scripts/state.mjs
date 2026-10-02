@@ -16,8 +16,8 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
-import { OUT, PROFILE, SKILL, chromePath, config, tool } from './common.mjs';
-import { busy, slotOf } from './gate.mjs';
+import { OUT, PROFILE, SKILL, chromePath, config, tool } from './lib/common.mjs';
+import { busy, slotOf } from './lib/gate.mjs';
 
 const PORT = 47615;
 const KEYS = ['tower:dismissed', 'tower:read', 'metanav:tactics'];
@@ -40,7 +40,7 @@ function save(state) {
 
 // A run. `manual`: one the user asked for (SYNC NOW, `metanav`, a sign-in that worked) - run.mjs skips the hours for it.
 function start(manual) {
-  spawn(process.execPath, [join(SKILL, 'run.mjs'), ...(manual ? ['--manual'] : [])], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  spawn(process.execPath, [join(SKILL, 'scripts', 'run.mjs'), ...(manual ? ['--manual'] : [])], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
 }
 const refresh = () => start(true);
 // one run at a time (run.mjs locks too), and not while a sign-in window holds the browser profile

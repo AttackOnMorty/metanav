@@ -10,7 +10,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-c</string>
-    <string>node __SKILL__/state.mjs; exit $?</string>
+    <string>node __SKILL__/scripts/state.mjs; exit $?</string>
   </array>
   <!-- launchd starts with a bare environment: the installer writes the user's PATH here (node, claude or codex, gh, az) -->
   <key>EnvironmentVariables</key>

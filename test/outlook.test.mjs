@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { calendarEvents, isMeeting, meetingTime, rowTime } from '../outlook.mjs';
+import { calendarEvents, isMeeting, meetingTime, rowTime } from '../scripts/collect/outlook.mjs';
 
 // Outlook on the web set to English, day/month/year dates and a 12-hour clock (README)
 test('a mail row\'s time is read day first, on a 12-hour clock', () => {

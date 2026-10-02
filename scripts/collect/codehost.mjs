@@ -1,4 +1,4 @@
-// The code hosts, GitHub (fetch.mjs) and Azure DevOps (ado.mjs), read into one shape for the judge (JUDGE.md step 2):
+// The code hosts, GitHub (github.mjs) and Azure DevOps (ado.mjs), read into one shape for the judge (JUDGE.md step 2):
 //   work             the user's PBIs / work items under way, each with its PRs nested ({kind: "pbi", prs}), then their
 //                    PRs with none ({kind: "pr"})
 //   review_requests  others' PRs waiting on the user's review; `rereview`: the author came back to it after the
@@ -32,7 +32,7 @@ export function workTree(pbis, prs, belongs) {
   ];
 }
 
-// ---- GitHub: the GraphQL answer fetch.mjs asks for (me, review, mine, issues) -> work and review_requests
+// ---- GitHub: the GraphQL answer github.mjs asks for (me, review, mine, issues) -> work and review_requests
 
 // drop a size prefix, e.g. "XL⚠️ ◾ feat: ..." -> "feat: ..."
 const clean = s => (s || '').replace(/^[^◾]{0,8}◾\s*/u, '');

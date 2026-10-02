@@ -2,7 +2,7 @@
 // with what the collector knows for certain put in by code, not left to the judge.
 //   intake(brief, inputs, prev) -> the brief to show and keep in runs/
 // `inputs` is the collector's inputs.json; `prev` the previous run's brief, or null on a first run.
-import Panel from './panel.cjs';
+import Panel from '../panel/panel.cjs';
 
 const LISTS = ['queue', 'waiting', 'highlights', 'done', 'calendar'];
 // Sections whose items are flagged against the previous run ("done": closed since then)

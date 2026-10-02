@@ -8,7 +8,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readConfig } from './config.mjs';
 
-export const SKILL = dirname(fileURLToPath(import.meta.url));
+// the skill's own folder: SKILL.md, config.json, scripts/, references/, assets/
+export const SKILL = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 export const config = readConfig(join(SKILL, 'config.json'));
 export const OUT = (config.output_dir || '~/metanav').replace(/^~(?=$|[\\/])/, homedir());
 export const SENT = 'https://outlook.office.com/mail/sentitems';   // the same for everyone

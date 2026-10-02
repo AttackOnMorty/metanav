@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { allowed, nextRun, slotOf } from '../gate.mjs';
+import { allowed, nextRun, slotOf } from '../scripts/lib/gate.mjs';
 
 const HOURLY = { every_minutes: 60, start_hour: 9, end_hour: 18 };
 const at = (d, h, m = 0) => new Date(2026, 9, d, h, m);   // October 2026: the 2nd is a Friday

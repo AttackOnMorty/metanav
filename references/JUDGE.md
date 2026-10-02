@@ -9,9 +9,9 @@ One page the user glances at through the day. It answers one question first — 
 
 The panel is in English and uses Persona 5's own terms, so **everything the run writes in its own words is English**; people's words, and messages the user sends them, stay in their language (see the copy rules).
 
-Only what reaches the user through their own mail, chats, GitHub and Azure DevOps — no outside feeds (markets, news sites, weather). Each run is **incremental**: it starts from the previous run's judgement, re-checks what was open, and judges only what's new since then. This file is the judge's instructions. `run.mjs` has already collected everything into `INPUTS` and renders the page from what you write to `BRIEF`; `HOW-IT-WORKS.md` explains the whole flow for people.
+Only what reaches the user through their own mail, chats, GitHub and Azure DevOps — no outside feeds (markets, news sites, weather). Each run is **incremental**: it starts from the previous run's judgement, re-checks what was open, and judges only what's new since then. This file is the judge's instructions. `run.mjs` has already collected everything into `INPUTS` and renders the page from what you write to `BRIEF`; `docs/HOW-IT-WORKS.md` explains the whole flow for people.
 
-Scripts collect; **your job is judgement: decide what the user should do, in what order, and why.** Do not edit `template.html` to change content — change the data.
+Scripts collect; **your job is judgement: decide what the user should do, in what order, and why.** Do not edit `assets/template.html` to change content — change the data.
 
 **You run unattended.** Nobody reads a run while it works: never ask a question or wait for an answer — decide, finish and write `BRIEF`, and say anything the user must do in your reply (it goes into the run's log).
 

@@ -1,16 +1,12 @@
-// GitHub + Azure DevOps state for Meta-Nav. Deterministic, no judgement: the GitHub adapter (fetched here, read into
-// codehost.mjs's shape) and, through ado.mjs, Azure DevOps.
-// Usage: node fetch.mjs <SINCE> [LOOKBACK]   (ISO 8601 UTC) -> prints one JSON object; collect.mjs imports fetchAll instead
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { fromAdo } from './ado.mjs';
+// GitHub for Meta-Nav, the GitHub adapter: it fetches, and codehost.mjs decides what the answers mean.
+// Deterministic, no judgement.
 import { BODY, carriedOver, comment, githubLists } from './codehost.mjs';
-import { config, github, graphql } from './common.mjs';
+import { config, github, graphql } from '../lib/common.mjs';
 
 const pad = n => String(n).padStart(2, '0');
 const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
-async function fromGithub(SINCE) {
+export async function fromGithub(SINCE) {
   const owner = config.github.org;
   const q = s => JSON.stringify(`${s} org:${owner} archived:false`);
   const d = await graphql(`{ me: viewer { login }
@@ -57,14 +53,6 @@ async function fromGithub(SINCE) {
   return { ok: true, ...lists, mentions };
 }
 
-export async function fetchAll(SINCE, LOOKBACK) {
-  const [gh, az] = await Promise.all([
-    fromGithub(SINCE).catch(e => ({ ok: false, error: `${String(e.message || e).slice(0, 200)} - run \`gh auth status\`` })),
-    fromAdo(SINCE, LOOKBACK).catch(e => ({ ok: false, error: `${String(e.message || e).slice(0, 200)} - run \`az login\`` })),
-  ]);
-  return { since: SINCE, github: gh, ado: az };
-}
-
 // GitHub PRs and issues the run points at that this run's lists don't carry - the previous run's items (`carried`, its
 // links), and for PRs also links in mail and chats (`linked`, text) - with their state now, so the run needn't look
 // them up one by one and can re-judge whose an issue is when nothing new came in about it. One GraphQL call each.
@@ -93,5 +81,3 @@ export async function githubStates(carried, linked, gh) {
         comments: x.comments.nodes.map(c => comment({ by: c.author?.login, at: c.createdAt, url: c.url, text: c.body })) })),
   };
 }
-
-if (fileURLToPath(import.meta.url) === resolve(process.argv[1] || '')) console.log(JSON.stringify(await fetchAll(process.argv[2], process.argv[3] || process.argv[2])));

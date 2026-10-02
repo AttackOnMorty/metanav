@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import Panel from '../panel.cjs';
+import Panel from '../scripts/panel/panel.cjs';
 
 const { model, record } = Panel;
 // Friday 2 October 2026, local time

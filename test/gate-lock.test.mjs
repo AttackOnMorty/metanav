@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { acquire, busy, release } from '../gate.mjs';
+import { acquire, busy, release } from '../scripts/lib/gate.mjs';
 
 const folder = () => mkdtempSync(join(tmpdir(), 'metanav-gate-'));
 const MIN = 60e3;

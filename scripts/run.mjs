@@ -10,9 +10,9 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { OUT, SKILL, config, tool } from './common.mjs';
-import { acquire, allowed, release } from './gate.mjs';
-import { renderBrief, repaint } from './render.mjs';
+import { OUT, SKILL, config, tool } from './lib/common.mjs';
+import { acquire, allowed, release } from './lib/gate.mjs';
+import { renderBrief, repaint } from './panel/render.mjs';
 
 const RESCAN = process.argv.includes('--rescan');
 const now = new Date();
@@ -43,14 +43,14 @@ const NOW = `${now.toLocaleDateString('en-US', { weekday: 'long' })} ${now.getFu
 const DIR = join(OUT, '.inputs');
 mkdirSync(DIR, { recursive: true });
 const INPUTS = join(DIR, 'inputs.json'), BRIEF = join(DIR, 'brief.json');
-const collect = spawnSync(process.execPath, [join(SKILL, 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3, windowsHide: true });
+const collect = spawnSync(process.execPath, [join(SKILL, 'scripts', 'collect', 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3, windowsHide: true });
 const collected = `${collect.stdout || ''}${collect.stderr || ''}`.trim();
 
 // Judge. The agent reads the inputs, the previous result and the user's clicks and tactics, follows JUDGE.md,
 // and writes BRIEF - nothing else: no network, no shell of its own, so it runs with the least access either agent has.
 // The prompt goes in on stdin: it's long, and on Windows the agents start through the shell.
 const prompt = `You are Meta-Nav's judge, running unattended: nobody will answer a question, so decide, finish and write the file.
-Read ${join(SKILL, 'JUDGE.md')} and follow it, with these facts for this run:
+Read ${join(SKILL, 'references', 'JUDGE.md')} and follow it, with these facts for this run:
 SINCE=${SINCE}
 LOOKBACK=${LOOKBACK}
 FIRST=${FIRST}

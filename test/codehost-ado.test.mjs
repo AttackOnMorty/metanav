@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { adoCi, adoReview, adoReviewWait, workTree } from '../codehost.mjs';
+import { adoCi, adoReview, adoReviewWait, workTree } from '../scripts/collect/codehost.mjs';
 
 test('my PR\'s review state from the other reviewers\' votes', () => {
   const v = (vote, isRequired = false) => ({ vote, isRequired });
@@ -36,7 +36,7 @@ test('a work item\'s PRs sit under it by their linked id; the rest stay flat', (
 });
 
 test('the carried-over links a host looks up: its own kind, each once, not ones its lists already have, at most so many', async () => {
-  const { carriedOver } = await import('../codehost.mjs');
+  const { carriedOver } = await import('../scripts/collect/codehost.mjs');
   const text = JSON.stringify(['https://github.com/acme/api/pull/1', 'see https://github.com/acme/api/pull/2 and /pull/1 again https://github.com/acme/api/pull/1',
     'https://github.com/acme/api/issues/3', 'https://github.com/acme/web/pull/4']);
   const urls = carriedOver(text, /https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g, ['https://github.com/acme/api/pull/2'], 2);

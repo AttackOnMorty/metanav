@@ -10,9 +10,9 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OUT, SENT, SKILL, WIN, config, tool } from './common.mjs';
-import { nextRun } from './gate.mjs';
-import { intake } from './intake.mjs';
+import { OUT, SENT, SKILL, WIN, config, tool } from '../lib/common.mjs';
+import { nextRun } from '../lib/gate.mjs';
+import { intake } from '../judge/intake.mjs';
 
 const RUNS = join(OUT, 'runs');
 
@@ -29,7 +29,7 @@ function writePanel(data) {
   const { schedule } = config;
   data = { ...data, interval_min: schedule.every_minutes, next_run: nextRun(new Date(data.generated_at), schedule)?.toISOString() ?? null, mail_folders: MAIL_FOLDERS };
   // the panel model goes into the page itself: an index.html opened from disk can't load a module beside it
-  const template = readFileSync(join(SKILL, 'template.html'), 'utf8').replace('__PANEL__', () => readFileSync(join(SKILL, 'panel.cjs'), 'utf8'));
+  const template = readFileSync(join(SKILL, 'assets', 'template.html'), 'utf8').replace('__PANEL__', () => readFileSync(join(SKILL, 'scripts', 'panel', 'panel.cjs'), 'utf8'));
   // The open page polls stamp.js once a minute and reloads only when it changes: new data, the syncing flag, or a
   // new template. Written after index.html, so a reload always gets the new page.
   const stamp = createHash('sha1').update(template + JSON.stringify(data)).digest('hex').slice(0, 12);

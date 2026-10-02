@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Meta-Nav's collector: reads Outlook (mail folders + today's calendar), Teams, and GitHub / Azure DevOps (fetch.mjs, alongside
-// the browser) in one go, with no model in the loop, and writes one JSON file for the run to judge (JUDGE.md, step 1).
+// Meta-Nav's collector: reads Outlook (mail folders + today's calendar), Teams, and GitHub / Azure DevOps (github.mjs, ado.mjs,
+// alongside the browser) in one go, with no model in the loop, and writes one JSON file for the run to judge (JUDGE.md, step 1).
 //
 // Usage: node collect.mjs <SINCE> <LOOKBACK> <first run: yes|no> <PREV run json, or ""> <out.json>
 //
@@ -8,9 +8,9 @@
 // The browser profile is the runs' own (named after the output dir); state.mjs's SIGN IN signs in on the same one.
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { PROFILE, SENT, config } from './common.mjs';
-import { adoStates } from './ado.mjs';
-import { fetchAll, githubStates } from './fetch.mjs';
+import { PROFILE, SENT, config } from '../lib/common.mjs';
+import { adoStates, fromAdo } from './ado.mjs';
+import { fromGithub, githubStates } from './github.mjs';
 import { calendarEvents, drawnRows, isMeeting, meetingTime, pageLabels, rowTexts, rowTime, scrollList } from './outlook.mjs';
 import { conversations, readCache } from './teams.mjs';
 
@@ -149,8 +149,12 @@ function fromPrev(file) {
 }
 
 const prev = fromPrev(PREV);
-const fetching = timed('GitHub + Azure DevOps', () => fetchAll(SINCE, LOOKBACK)
-  .catch(e => ({ github: { ok: false, error: String(e.message || e).slice(0, 200) }, ado: { ok: false } })));
+// the code hosts alongside the browser; one that fails says how to fix it and leaves the other standing
+const failed = (e, fix) => ({ ok: false, error: `${String(e.message || e).slice(0, 200)} - run \`${fix}\`` });
+const fetching = timed('GitHub + Azure DevOps', async () => {
+  const [github, ado] = await Promise.all([fromGithub(SINCE).catch(e => failed(e, 'gh auth status')), fromAdo(SINCE, LOOKBACK).catch(e => failed(e, 'az login'))]);
+  return { github, ado };
+});
 
 const out = { collected_at: new Date().toISOString(), since: SINCE, lookback: LOOKBACK, first_run: FIRST === 'yes' };
 let context;
