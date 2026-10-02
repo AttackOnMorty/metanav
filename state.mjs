@@ -6,7 +6,7 @@
 //   service writes for it.
 // It listens on 127.0.0.1 only.
 //   POST /state   {"key": "tower:dismissed" | "tower:read" | "metanav:tactics", "value": {...}}   -> the whole state, as JSON
-//   POST /signin  {"source": "Azure DevOps" | "Outlook" | "Teams"}          -> {"status": "started" | "busy"}
+//   POST /signin  {"source": "microsoft" | "azure"}                         -> {"status": "started" | "busy"}
 //                 The banner's SIGN IN button: a window to sign in, then a refresh.
 //   POST /refresh {} | {"queue": true}                                       -> {"status": "started" | "busy" | "queued"}
 //                 The panel's SYNC NOW button: a run now, whatever the hour (busy if one is running, or a sign-in window is open).
@@ -96,8 +96,7 @@ function signInAzure() {
   return tool('az', ['login', '--output', 'none', ...(tenant ? ['--tenant', tenant] : [])], { env, timeout: 600e3 }).status === 0;
 }
 
-function signIn(source) {
-  const what = source === 'Azure DevOps' ? 'azure' : 'microsoft';
+function signIn(what) {
   // a run holds the browser profile while it reads Outlook and Teams
   if (signing.has(what) || (what === 'microsoft' && busy(OUT))) return 'busy';
   signing.add(what);
@@ -125,7 +124,7 @@ const server = createServer((req, res) => {
     let body;
     try {
       body = JSON.parse(raw || '{}');
-      if (req.url === '/signin' && !['Azure DevOps', 'Outlook', 'Teams'].includes(body.source)) throw 0;
+      if (req.url === '/signin' && !['microsoft', 'azure'].includes(body.source)) throw 0;
       if (req.url === '/state' && (!KEYS.includes(body.key) || typeof body.value !== 'object' || !body.value || Array.isArray(body.value))) throw 0;
     } catch { return reply(res, 400); }
     if (req.url === '/signin') return reply(res, 200, { status: signIn(body.source) });

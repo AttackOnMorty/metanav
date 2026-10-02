@@ -492,7 +492,7 @@ const rnd = (s, lo = 0, hi = 1) => lo + (hash(s) % 10000) / 10000 * (hi - lo);
 
 const SRC_NAME = { mail: 'Outlook', teams: 'Teams', github: 'GitHub', ado: 'Azure DevOps', pbi: 'GitHub issue' };
 
-// The user's clicks. With the state service running (state.py) the done / resolved / read clicks live in ~/metanav/state.json,
+// The user's clicks. With the state service running (state.mjs) the done / resolved / read clicks live in ~/metanav/state.json,
 // shared by every browser and read by each run; state.js beside the page carries a copy in. Without it (a preview,
 // or the service not installed) they stay in this browser, as before. "Done" is stored with the item's activity time
 // when dismissed, so anything newer on it (a reply, a nudge) brings it back flagged.
@@ -516,7 +516,7 @@ const store = (k, shared = false) => ({
   },
 });
 if (SHARED) Object.keys(local.get('tower:unsaved')).forEach(k => { SHARED = { ...SHARED, [k]: local.get(k) }; push(k, local.get(k)); });
-const DONE = store('tower:dismissed', true), READ = store('tower:read', true), TAB = store('tower:tab');
+const DONE = store('tower:dismissed', true), READ = store('tower:read', true);
 // The user's tactics: { orders: ["…", …] }, standing orders in their own words that every run reads (JUDGE.md step 5)
 const TACTICS = store('metanav:tactics', true);
 const { keyOf } = Panel;
@@ -536,15 +536,14 @@ const actionsOf = x => x.actions?.length ? x.actions : x.url ? [{ label: 'Open',
 // [data-done]    + doneAttrs(item)       mark done (the drawing may animate first via beforeDone(el))
 // [data-restore="key"]                   undo a manual done
 // [data-nudge="key"]                     open / close the nudge composer for that item (openNudge)
-// [data-composer] > textarea + [data-send][data-url] + [data-cancel]
-// [data-tab="name"]                      toggle TAB.get().open
+// [data-composer] > textarea + [data-send][data-url]
 // [data-dismiss] + dismissAttrs(item): not mine / won't do - hidden like done, and listed as DROPPED, not DONE!
 const doneAttrs = x => `data-done="${e(keyOf(x))}"`;
 const dismissAttrs = x => `data-dismiss="${e(keyOf(x))}"`;
 let openNudge = '';   // which item has its composer open (not persisted)
-const composer = (text, url, { cancellable = true, extra = '' } = {}) => `<div class="composer" data-composer>
+const composer = (text, url, extra = '') => `<div class="composer" data-composer>
   <textarea spellcheck="false">${e(text)}</textarea>
-  <div class="composer-btns"><button class="send" data-send data-url="${e(url)}">Copy & open ${via(url)}</button>${extra}${cancellable ? '<button class="cancel" data-cancel>Cancel</button>' : ''}</div></div>`;
+  <div class="composer-btns"><button class="send" data-send data-url="${e(url)}">Copy & open ${via(url)}</button>${extra}</div></div>`;
 
 async function copy(text) {
   try { await navigator.clipboard.writeText(text); return true; }
@@ -562,7 +561,7 @@ let beforeDone = null;   // optional: async el => {} — a design's "done" (or d
 let holding = false;     // a design's own sheet is open (tactics): no repaint or reload under it
 function start(render) {
   document.addEventListener('click', async ev => {
-    const t = ev.target.closest('[data-done], [data-dismiss], [data-restore], [data-nudge], [data-send], [data-cancel], [data-tab]');
+    const t = ev.target.closest('[data-done], [data-dismiss], [data-restore], [data-nudge], [data-send]');
     if (!t) return;
     ev.preventDefault(); ev.stopPropagation();
     if (t.matches('[data-done], [data-dismiss]')) {
@@ -571,12 +570,8 @@ function start(render) {
       if (item) { const D = DONE.get(); D[key] = Panel.record(item, t.matches('[data-done]') ? 'done' : 'drop', new Date()); DONE.set(D); }
     } else if (t.matches('[data-restore]')) {
       const D = DONE.get(); delete D[t.dataset.restore]; DONE.set(D);
-    } else if (t.matches('[data-tab]')) {
-      TAB.set({ open: TAB.get().open === t.dataset.tab ? '' : t.dataset.tab });
     } else if (t.matches('[data-nudge]')) {
       openNudge = openNudge === t.dataset.nudge ? '' : t.dataset.nudge;
-    } else if (t.matches('[data-cancel]')) {
-      openNudge = '';
     } else {   // [data-send]: copy whatever is in the box (the user may have edited it), then open the chat
       const ok = await copy(t.closest('[data-composer]').querySelector('textarea').value);
       t.textContent = ok ? 'Copied — opening…' : 'Copy failed';
@@ -590,7 +585,7 @@ function start(render) {
   const editing = () => openNudge || holding || document.activeElement?.tagName === 'TEXTAREA';
   render();
   setInterval(() => editing() || render(), 30e3);          // keep clocks and the next-meeting line live
-  // Pick up the next run's rewrite of this file. render.py writes stamp.js beside it: reload only when that changes,
+  // Pick up the next run's rewrite of this file. render.mjs writes stamp.js beside it: reload only when that changes,
   // so the page isn't torn down and rebuilt every minute for nothing. No stamp.js (a preview): reload as before.
   const load = (file, onload, onerror) => {
     const s = document.createElement('script');
@@ -614,7 +609,6 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const WEEKDAY = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
 // time of day, set in two staggered lines like the game's "After / School"
 const TOD = h => h < 5 ? ['Late', 'Night'] : h < 8 ? ['Early', 'Morning'] : h < 11 ? ['Morning'] : h < 13 ? ['Lunchtime'] : h < 15 ? ['Afternoon'] : h < 18 ? ['After', 'School'] : h < 22 ? ['Evening'] : ['Late', 'Night'];
-const SRC_TAG = { github: 'GITHUB', teams: 'TEAMS', mail: 'OUTLOOK', ado: 'AZURE DEVOPS' };
 const flagHtml = f => f === 'NEW' ? '<span class="burst"><i>NEW!</i></span>' : f ? `<span class="tag-upd">${f}</span>` : '';
 // calendar days since the ask — the same count age() shows on each row
 const calDays = w => w.since ? Math.max(0, Math.floor((new Date(new Date().toDateString()) - new Date(new Date(w.since).toDateString())) / 864e5)) : 0;
@@ -647,16 +641,16 @@ const collage = (text, seed, cls = '') => {
     `<span class="rn-word">${[...w].map(c => ransom(c, seed + i++, '', ['w', 'b', 'p'])).join('')}</span>`).join('<span class="rn-gap"></span>') + '</span>';
 };
 
-// A source that needs signing in gets a SIGN IN button. Meta-Nav's helper (state.py) opens the sign-in outside the terminal
+// A source that needs signing in gets a SIGN IN button. Meta-Nav's helper (state.mjs) opens the sign-in outside the terminal
 // and refreshes once it works, so the banner goes by itself. Outlook and Teams sign in together: one button for both.
 const signinSaid = {};   // what the button says after a click, kept across the 30s repaints
 const banner = V => {
   if (!V.failed.length) return '';
   const shown = new Set();
   const items = V.failed.map(s => {
-    const kind = s.name === 'Azure DevOps' ? 'azure' : 'microsoft';
-    const btn = /sign.?in|log.?in/i.test(s.note || '') && !shown.has(kind) && shown.add(kind)
-      ? ` <button class="alert-go" data-signin="${e(s.name)}" ${signinSaid[s.name] ? 'disabled' : ''}>${e(signinSaid[s.name] || 'SIGN IN')}</button>` : '';
+    // s.signin: which sign-in fixes it (the run knows), "microsoft" or "azure"; one button for each
+    const btn = s.signin && !shown.has(s.signin) && shown.add(s.signin)
+      ? ` <button class="alert-go" data-signin="${e(s.signin)}" ${signinSaid[s.signin] ? 'disabled' : ''}>${e(signinSaid[s.signin] || 'SIGN IN')}</button>` : '';
     return `<span class="alert-i">${e(s.name)} offline${s.note ? ` (${e(s.note)})` : ''}${btn}</span>`;
   });
   return `<div class="alert" role="alert"><span class="alert-k">WARNING</span><span class="alert-t">${items.join('')}</span></div>`;
@@ -670,9 +664,9 @@ document.addEventListener('click', async ev => {
   try {
     const r = await fetch(STATE_URL.replace(/state$/, 'signin'), { method: 'POST', body: JSON.stringify({ source: src }) });
     const { status } = await r.json();
-    said = status === 'busy' ? 'BUSY · TRY AGAIN IN A MINUTE' : src === 'Azure DevOps' ? 'CHECK YOUR BROWSER' : 'SIGN IN IN THE NEW WINDOW';
+    said = status === 'busy' ? 'BUSY · TRY AGAIN IN A MINUTE' : src === 'azure' ? 'CHECK YOUR BROWSER' : 'SIGN IN IN THE NEW WINDOW';
   } catch {
-    said = src === 'Azure DevOps' ? 'HELPER OFF · IN A TERMINAL: BROWSER=open az login' : 'HELPER OFF · IN A TERMINAL: metanav';
+    said = src === 'azure' ? 'HELPER OFF · IN A TERMINAL: BROWSER=open az login' : 'HELPER OFF · IN A TERMINAL: metanav';
   }
   signinSaid[src] = said;
   render();
@@ -774,7 +768,7 @@ function card(V) {
     `<a class="act ${i || chat ? '' : 'primary'}" ${linkOpen(a.url, names(t.who)[0])}><span>${i || chat ? '' : '<b>GO</b> '}${e(a.label)}</span></a>`).join('');
   // Drop sits at the end of the buttons, next to the TAKE IT DONE stamp: the two ways to finish with it, together
   const drop = `<button class="card-d" ${dismissAttrs(t)} title="Drop: not mine, or won't do" aria-label="Drop"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6"/></svg></button>`;
-  const body = chat ? composer(t.nudge, chat, { cancellable: false, extra: acts + drop }) : `<div class="acts">${acts}${drop}</div>`;
+  const body = chat ? composer(t.nudge, chat, acts + drop) : `<div class="acts">${acts}${drop}</div>`;
   const title = ransom(t.title, keyOf(t));
   return `<article class="card" data-card>${EFFORT[t.effort] ? `<span class="no eff" aria-label="Effort: ${EFFORT[t.effort]}">${t.effort}</span>` : ''}
     <div class="card-kicker"><span class="ribbon">TARGET · DO THIS NOW</span>${flagHtml(t.change)}
@@ -926,7 +920,7 @@ function destOf(a) {
     return g ? `GitHub · ${g[1] === 'pull' ? 'PR ' : ''}#${g[2]}` : r ? `GitHub · release ${r[1]}` : 'GitHub';
   }
   if (/^outlook\./.test(h)) {
-    // Outlook opens an Inbox email itself; any other mail link opens a folder, and the prompt names it (render.py passes the names)
+    // Outlook opens an Inbox email itself; any other mail link opens a folder, and the prompt names it (render.mjs passes the names)
     const f = (B.mail_folders || {})[p.replace(/\/$/, '')];
     return `Outlook · ${/\/calendar/.test(p) ? 'calendar' : /\/id\//.test(p) ? 'email' : f ? (f === 'Inbox' ? f : `${f} folder`)
       : /sentitems/.test(p) ? 'Sent folder' : 'folder'}`;

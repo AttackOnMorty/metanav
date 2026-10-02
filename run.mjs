@@ -66,7 +66,10 @@ const agent = config.judge?.agent || 'claude';
 const model = config.judge?.model || '';
 const t0 = Date.now();
 let log;
-if (agent === 'codex') {
+if (!existsSync(INPUTS)) {
+  // the collector crashed or timed out: nothing to judge; the panel keeps the last result and goes stale
+  log = { agent, is_error: true, result: `The collector wrote no inputs${collect.error ? ` (${collect.error.message})` : ''}` };
+} else if (agent === 'codex') {
   // workspace-write keeps its writes inside .inputs; the user's own Codex config (MCP servers, rules) and hooks aren't
   // loaded - hooks.json isn't covered by --ignore-user-config, and a hook waiting on a person would hang the run
   const last = join(DIR, 'last-message.txt');

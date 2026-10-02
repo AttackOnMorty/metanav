@@ -13,7 +13,7 @@ Only what reaches the user through their own mail, chats, GitHub and Azure DevOp
 
 Scripts collect; **your job is judgement: decide what the user should do, in what order, and why.** Do not edit `template.html` to change content — change the data.
 
-**You run unattended.** Nobody reads a run while it works: never ask a question or wait for an answer — decide, finish and write `BRIEF`, and put anything the user must do in `sources` (the panel shows it).
+**You run unattended.** Nobody reads a run while it works: never ask a question or wait for an answer — decide, finish and write `BRIEF`, and say anything the user must do in your reply (it goes into the run's log).
 
 ---
 
@@ -35,17 +35,15 @@ Read `INPUTS`, `PREV`, `STATE` and `CONFIG` (who the user is, what to skip) firs
 - `github.work` is the "my work" tree: each sprint PBI (an issue on a project board) with its PRs nested (`kind: "pbi"`) — with its `assignees`, whole `body` and latest `comments`, so its impact can be read — and PRs with no PBI on the board flat (`kind: "pr"`). Parents are resolved from the closing reference, a `1234-` branch prefix, or a line-anchored `Part of / Fixes #N`; never a bare `#N` in prose.
 - `github.review_requests` — others' PRs waiting on the user, drafts included (`draft: true`), with their `size` (files, lines added and removed). `waiting_days` counts from the user's last review; `rereview: true` means the author has answered it.
 - `github.mentions` — where someone @mentioned the user on GitHub (issues, PR threads), since `SINCE`: `repo`, `title`, `url`, `unread`, the issue or PR itself — `state`, `assignees`, whole `body`, latest `comments` — and `last_by`, with `answered: true` when the latest word is the user's. They otherwise reach the user only as GitHub notification mail, which isn't read.
-- `ado` — Azure DevOps, read the same way across each organisation in `config.azure_devops.orgs` (`ado.orgs`, those read) and in the same shapes: `ado.work` (work items assigned to the user that are under way — in a sprint running now, or in progress and touched within the lookback — each with its `type`, `status`, `body`, `comments` and the PRs linked to it; then their PRs linked to none), `ado.review_requests` (PRs where they're a reviewer and haven't approved; `rereview: true` when the author pushed after the user's last word on a PR they voted down) and `ado.mentions` (work item discussions that @mentioned them since `SINCE`; a mention in a PR comment comes as notification mail). A PR's `review` is `APPROVED`, `CHANGES_REQUESTED`, `WAITING_FOR_AUTHOR` or `PENDING`; `merge: "conflicts"` means it can't merge as it is. Everything below applies to them as to their GitHub counterparts; their `id` is the web URL. `ado.skipped: true` means Azure DevOps isn't configured: leave it out of `sources` altogether. `ado.errors` names any organisation that couldn't be read: say so in its `sources` note.
+- `ado` — Azure DevOps, read the same way across each organisation in `config.azure_devops.orgs` (`ado.orgs`, those read) and in the same shapes: `ado.work` (work items assigned to the user that are under way — in a sprint running now, or in progress and touched within the lookback — each with its `type`, `status`, `body`, `comments` and the PRs linked to it; then their PRs linked to none), `ado.review_requests` (PRs where they're a reviewer and haven't approved; `rereview: true` when the author pushed after the user's last word on a PR they voted down) and `ado.mentions` (work item discussions that @mentioned them since `SINCE`; a mention in a PR comment comes as notification mail). A PR's `review` is `APPROVED`, `CHANGES_REQUESTED`, `WAITING_FOR_AUTHOR` or `PENDING`; `merge: "conflicts"` means it can't merge as it is. Everything below applies to them as to their GitHub counterparts; their `id` is the web URL. `ado.skipped: true` means Azure DevOps isn't configured. `ado.errors` names any organisation that couldn't be read.
 - `issue_states` — issues carried over from `PREV` that aren't in `work` or `mentions`, by URL: `state`, `assignees`, `body`, `comments`. How 5a re-judges whose an issue is when nothing new came in about it.
 - `ado_states` — Azure DevOps work items and PRs carried over from `PREV` that aren't in this run's lists, by URL: `state`, and for a PR its `votes` and `closedAt`.
 - `pr_states` — the current state of every other GitHub PR the inputs link to (carried-over items, links in mail and chats), by URL: `state` (`OPEN` / `MERGED` / `CLOSED`), `isDraft`, `reviewDecision`, `latestReviews`, `updatedAt`. It's how 5a checks a loop about a PR; for a PR that isn't there, go by what the inputs say.
-- `ok: false` on `github` or `ado` means that source failed — record it in `sources`, don't abort.
-
-`run.mjs` adds `work` and `review_requests` to the panel itself — leave them out of `brief.json`.
+- `ok: false` on `github` or `ado` means that source failed — carry its previous items over, don't abort. The run shows every source's status on the panel itself, from the inputs.
 
 ## Step 3: Outlook — `mail`
 
-The collector reads the mail lists and never opens a message (opening one marks it read). `mail.signin_needed: true` means Outlook sat on Microsoft's sign-in page for 20 seconds (a passing session renewal gets that long to come back): mark Outlook — and Teams, which shares the sign-in — `ok: false, note: "sign-in needed"` (the panel's SIGN IN button opens a window for the user), carry their previous items over unchanged, and finish the run. Never type credentials. `mail.error` → `ok: false` with a short note.
+The collector reads the mail lists and never opens a message (opening one marks it read). `mail.signin_needed: true` means Outlook sat on Microsoft's sign-in page for 20 seconds (a passing session renewal gets that long to come back): carry the previous Outlook and Teams items over unchanged (Teams shares the sign-in) and finish the run: the panel shows a SIGN IN button that opens a window for the user. Never type credentials. `mail.error`: carry them over the same way.
 
 ### 3a. Mail folders — `mail.folders`
 
@@ -75,7 +73,7 @@ Each label is `Title, 9:30 AM to 9:45 AM, Friday, September 25, 2026, [location]
 
 ## Step 4: Teams — `teams`
 
-The collector reads Teams' own cache (IndexedDB), with `teams-extract.js`, once it has caught up — no network call of its own, no chat opened, nothing marked read. `teams.signin_needed` is handled like Outlook's (step 3); `teams.error` → `ok: false` with a short note.
+The collector reads Teams' own cache (IndexedDB), with `teams-extract.js`, once it has caught up — no network call of its own, no chat opened, nothing marked read. `teams.signin_needed` and `teams.error` are handled like Outlook's (step 3).
 
 `teams.conversations[]` has `kind` (`dm` / `group` / `meeting`; channels aren't read), `name`, `unread`, and `messages[]` of `{id, at, from, unread, text}` where `from: "ME"` is the user. Bot chats (`config.teams.skip_chats`) are already left out: they're tests or reminders, not people.
 Only conversations with something new since `SINCE` are included (since `LOOKBACK` on a first run) — the others have nothing to re-judge; their loops come from `PREV`. A conversation the user took part in carries the whole lookback of history, for context. No conversations and no error means a quiet stretch.
@@ -111,7 +109,7 @@ Six principles decide everything in this step; what follows is how they apply.
 
 Each `queue` and `waiting` item from `PREV`, under the principles:
 - **Closed** (principle 3) → a one-liner in `done` (`"Sam reviewed and merged Api #80"`, `when`, `url`, `at`). **One thing, one `done` row**: stages of the same work (approved → merged) collapse into the latest.
-- **Still open, but something happened on it** (the user nudged again, a reply that doesn't close it) → keep the same `id`, set `last_activity` to that newest message's time, update `quote`, and keep everyone involved on it: those who still owe it in `who`, those who no longer do in `not_waiting`. `render.py` flags it updated.
+- **Still open, but something happened on it** (the user nudged again, a reply that doesn't close it) → keep the same `id`, set `last_activity` to that newest message's time, update `quote`, and keep everyone involved on it: those who still owe it in `who`, those who no longer do in `not_waiting`. The panel flags it updated.
 - **Still open** → keep its `id` / `url`, re-judged: whose it is, which list, its rank and wording. A matter that changes lists — passed back to the user, or now waiting on someone — keeps its `id`: the panel marks it MOVED.
 
 Keep `done` rows from `PREV` that closed today (local time, by `at`) — the panel shows today's only — and `highlights` under 24 hours old, re-judged the same way; a `done` row for an item the user ticked carries that item's `id`.
@@ -178,7 +176,7 @@ And `actions`: 1–2 buttons that start the work, first is the main one — `{ "
 | `headline` | not shown | Terminal summary only. |
 | `cost` / `tradeoffs` | not shown | The ranking, see 5c. |
 
-No emoji; no repeating the source ("On Teams, …") — the link already goes there. **What the run writes in its own words is English** — `title`, `what`, `why`, `reason`, `detail`, `where`, `due`, action `label`s, `done` rows, `sources` notes, `headline`, `cost`, `tradeoffs` — even when the source message was in another language. **People's words stay in their language:** `quote` and `thread` are what they wrote, untranslated, and a `nudge` is sent to them, so it's in the conversation's language. Names stay as people spell them. Dates are month/day, as in the panel's date: `due` is weekday + month/day, "Tue 9/29". A time that isn't today carries its day — "yesterday 12:10", "Mon 12:10"; a bare time always means today.
+No emoji; no repeating the source ("On Teams, …") — the link already goes there. **What the run writes in its own words is English** — `title`, `what`, `why`, `reason`, `detail`, `where`, `due`, action `label`s, `done` rows, `headline`, `cost`, `tradeoffs` — even when the source message was in another language. **People's words stay in their language:** `quote` and `thread` are what they wrote, untranslated, and a `nudge` is sent to them, so it's in the conversation's language. Names stay as people spell them. Dates are month/day, as in the panel's date: `due` is weekday + month/day, "Tue 9/29". A time that isn't today carries its day — "yesterday 12:10", "Mon 12:10"; a bare time always means today.
 **`url` goes to where the ask or update was made** — the comment (`comments[].url`), the Teams message, the review (`latest_feedback_url`) — not just the issue, PR or chat it sits in; an action can still open the whole issue or PR. Mail outside the Inbox can only open its folder (3a).
 
 ## Step 6: Compose `brief.json`
@@ -209,16 +207,14 @@ Write it to `BRIEF`, the whole file at once, as valid JSON.
   ],
   "calendar": [ { "start": "09:30", "end": "09:45", "title": "...", "all_day": false } ],
   "highlights": [ { "id": "...", "source": "teams|mail|ado", "where": "Project chat", "title": "...", "detail": "...", "url": "...", "at": "<ISO>" } ],
-  "done": [ { "what": "PR #1803 merged", "when": "10:12", "url": "...", "at": "<ISO>", "id": "optional: the id of the item it closes, when the user ticked it", "effort": "D|C|B|A: when it closes a queue item, that item's effort" } ],
-  "sources": [ { "name": "Outlook", "ok": true, "note": "3 new emails" } ]
+  "done": [ { "what": "PR #1803 merged", "when": "10:12", "url": "...", "at": "<ISO>", "id": "optional: the id of the item it closes, when the user ticked it", "effort": "D|C|B|A: when it closes a queue item, that item's effort" } ]
 }
 ```
 
-Don't set `new` or `updated` — `run.mjs` computes both against the previous run from `id` and `last_activity`. Mail items: `"id": "<convid>"`; Teams items: `"id": "<conversation id>/<message id>"`; GitHub items: the PR/issue URL.
-`sources`: one entry each for **Outlook, Teams, GitHub**, and **Azure DevOps** when `config.azure_devops.orgs` lists any; `ok: false` with a short `note` whenever one failed or was skipped. The page shows a red banner for any failed source — a quiet panel must mean "nothing happened", never "didn't look".
+Don't set `new`, `moved`, `updated` or `sources` — the run computes the flags against the previous run from `id` and `last_activity`, and each source's status from the inputs. Mail items: `"id": "<convid>"`; Teams items: `"id": "<conversation id>/<message id>"`; GitHub items: the PR/issue URL.
 
 ## Step 7: Finish
 
-`run.mjs` renders the page from `BRIEF` and adds `work` and `review_requests` from the inputs itself. Never open the panel: the user keeps it open in a browser tab, and it reloads itself when a run writes something new.
+`run.mjs` renders the page from `BRIEF`. Never open the panel: the user keeps it open in a browser tab, and it reloads itself when a run writes something new.
 
 End with a short reply — it goes into the run's log, where the user looks when something seems off: the headline, counts per section, anything new, any failed source, and the `tradeoffs`.

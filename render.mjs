@@ -1,10 +1,10 @@
 // Render brief.json into the panel and keep the run history.
-//   node render.mjs <brief.json> [inputs.json]   the run's result (work and review_requests come from the inputs)
+//   node render.mjs <brief.json> <inputs.json>   the run's result, taken in by intake.mjs
 //   node render.mjs --syncing | --idle           repaint the last result with or without "Syncing" (run.mjs does both)
 // Writes, in the output dir:
 //   index.html          the panel (fixed path; the open page reloads itself when stamp.js changes)
 //   stamp.js            what the panel is showing, in one line - polled by the open page
-//   runs/<stamp>.json   this run, with `new` flags - the next run's baseline (kept 14 days)
+//   runs/<stamp>.json   this run as shown, flags and all - the next run's baseline (kept 14 days)
 //   .last-run           this run's time, the start of the next window
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
@@ -12,9 +12,8 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OUT, SCHEDULE, SENT, SKILL, WIN, config, tool } from './common.mjs';
 import { nextRun } from './gate.mjs';
+import { intake } from './intake.mjs';
 
-// Sections whose items get a "+NEW" flag when they weren't in the previous run ("done": closed since the last run)
-const TRACKED = ['queue', 'waiting', 'highlights', 'done'];
 const RUNS = join(OUT, 'runs');
 
 // Outlook folder paths -> names, so the panel can say which folder a mail link opens (only Inbox mail opens itself)
@@ -60,39 +59,10 @@ $x = $t.GetElementsByTagName('text'); $x.Item(0).AppendChild($t.CreateTextNode('
 }
 
 export function renderBrief(briefFile, inputsFile) {
-  const brief = JSON.parse(readFileSync(briefFile, 'utf8'));
-  // The run doesn't copy GitHub's "my work" and review requests into the brief; they come straight from the collector.
-  if (inputsFile) {
-    const inputs = JSON.parse(readFileSync(inputsFile, 'utf8'));
-    const gh = inputs.github || {};
-    brief.work ??= gh.work || [];
-    brief.review_requests ??= gh.review_requests || [];
-    // The panel's "Synced" time, .last-run (the next window's start) and the "updated" flags all hang on this.
-    // A model guesses the time; the collector knows when it read everything.
-    if (inputs.collected_at) brief.generated_at = inputs.collected_at.slice(0, 19) + 'Z';
-  }
-  // The wording is rewritten every run; an explicit id (mail conversation) or the link is what stays put
-  const key = i => i.id || i.url || i.title || i.what;
+  const read = f => JSON.parse(readFileSync(f, 'utf8'));
   const previous = runFiles();
-  brief.first_run = !previous.length;   // nothing to diff against: the page skips "since last run"
-  if (previous.length) {
-    const prev = JSON.parse(readFileSync(join(RUNS, previous.at(-1)), 'utf8'));
-    // Moved: the same matter changed sides - it was on the other list last run (passed back to the user, or now
-    // waiting on someone). Not new: the page says MOVED, so it doesn't look like it came from nowhere.
-    const other = { queue: 'waiting', waiting: 'queue' };
-    for (const section of TRACKED) {
-      const seen = new Set((prev[section] || []).map(key));
-      const there = new Set((prev[other[section]] || []).map(key));
-      for (const item of brief[section] || []) {
-        item.moved = !seen.has(key(item)) && there.has(key(item));
-        item.new = !seen.has(key(item)) && !item.moved;
-        // Already on the panel, but something happened on it since (a nudge, a reply that didn't close it).
-        // Without this, an item that moved looks exactly like one that didn't.
-        item.updated = !item.new && (item.last_activity || '') > (prev.generated_at || '');
-      }
-    }
-  }
-  const urgent = (brief.queue || []).filter(q => q.new && q.urgency === 'high');
+  const brief = intake(read(briefFile), read(inputsFile), previous.length ? read(join(RUNS, previous.at(-1))) : null);
+  const urgent = brief.queue.filter(q => q.new && q.urgency === 'high');
   if (urgent.length) notify(urgent.length === 1 ? urgent[0].title : `${urgent.length} new urgent items`);
 
   const d = new Date();
