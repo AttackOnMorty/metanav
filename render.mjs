@@ -29,7 +29,8 @@ const pad = n => String(n).padStart(2, '0');
 function writePanel(data) {
   // when the next scheduled run starts, after the one shown: the page's "Next sync", and how it tells a stale panel
   data = { ...data, interval_min: SCHEDULE.every_minutes, next_run: nextRun(new Date(data.generated_at), SCHEDULE)?.toISOString() ?? null, mail_folders: MAIL_FOLDERS };
-  const template = readFileSync(join(SKILL, 'template.html'), 'utf8');
+  // the panel model goes into the page itself: an index.html opened from disk can't load a module beside it
+  const template = readFileSync(join(SKILL, 'template.html'), 'utf8').replace('__PANEL__', () => readFileSync(join(SKILL, 'panel.cjs'), 'utf8'));
   // The open page polls stamp.js once a minute and reloads only when it changes: new data, the syncing flag, or a
   // new template. Written after index.html, so a reload always gets the new page.
   const stamp = createHash('sha1').update(template + JSON.stringify(data)).digest('hex').slice(0, 12);
