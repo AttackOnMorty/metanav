@@ -8,13 +8,13 @@
 // The browser profile is the runs' own (named after the output dir); state.mjs's SIGN IN signs in on the same one.
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { PROFILE, SENT, SKILL as HERE, config } from './common.mjs';
+import { PROFILE, SENT, config } from './common.mjs';
 import { adoStates } from './ado.mjs';
 import { fetchAll, githubStates } from './fetch.mjs';
+import { calendarEvents, drawnRows, isMeeting, meetingTime, pageLabels, rowTexts, rowTime, scrollList } from './outlook.mjs';
+import { conversations, readCache } from './teams.mjs';
 
 const [SINCE, LOOKBACK, FIRST, PREV, OUT] = process.argv.slice(2);
-const BOTS = config.teams.skip_chats;   // bot and reminder chats: not people
 
 const t0 = Date.now();
 const timings = {};
@@ -22,32 +22,17 @@ const timed = async (name, fn) => { const s = Date.now(); try { return await fn(
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // A list draws about one screen of rows, newest first: read on, scrolling, until past SINCE (an hourly run doesn't scroll)
-const ROWS = since => `(async () => {
-  const SINCE = Date.parse('${since}');
-  const lb = document.querySelector('[role=listbox]');
-  if (!lb) return [];
-  const sc = lb.querySelector('.customScrollBar') || lb;
-  const when = t => { const m = t && t.match(/(\\d+)\\/(\\d+)\\/(\\d{4}) (\\d+):(\\d+) ([AP]M)/); return m ? new Date(+m[3], m[2] - 1, +m[1], +m[4] % 12 + (m[6] === 'PM' ? 12 : 0), +m[5]).getTime() : NaN; };
-  const rows = new Map();
+async function readRows(page) {
+  const rows = new Map(), since = Date.parse(SINCE);
   for (let i = 0; i < 60; i++) {
-    for (const o of lb.querySelectorAll('[role=option]')) {
-      const convid = o.getAttribute('data-convid');
-      if (!convid || rows.has(convid)) continue;
-      rows.set(convid, { convid, label: o.getAttribute('aria-label')?.slice(0, 400),
-        unread: /^Unread/.test(o.getAttribute('aria-label') || '') || !!o.querySelector('button[aria-label="Mark as read"]'),
-        time: o.querySelector('[title*="/20"]')?.getAttribute('title') });
-    }
+    for (const r of await page.evaluate(drawnRows)) if (!rows.has(r.convid)) rows.set(r.convid, r);
     const last = [...rows.values()].pop();
-    if (!last || when(last.time) < SINCE) break;
-    const top = sc.scrollTop;
-    sc.scrollTop += sc.clientHeight * 0.8;
-    await new Promise(r => setTimeout(r, 900));
-    if (sc.scrollTop === top) break;
+    if (!last || rowTime(last.time) < since) break;
+    if (!await page.evaluate(scrollList, false)) break;
+    await sleep(900);
   }
   return [...rows.values()];
-})()`;
-const CALENDAR = `[...new Set([...document.querySelectorAll('[aria-label]')].map(e => e.getAttribute('aria-label'))
-  .filter(l => /(\\d{1,2}:\\d{2} [AP]M to \\d{1,2}:\\d{2} [AP]M|all day)/i.test(l) && !/^\\d{1,2}:\\d{2}/.test(l) && !/\\d+ events?,/.test(l)))]`;
+}
 
 // After a quiet spell Outlook and Teams pass through Microsoft's sign-in page to renew the session and come straight back.
 // Give it 20 seconds; still there means a real sign-in is needed.
@@ -61,26 +46,18 @@ async function open(page, url) {
   return signedIn(page);
 }
 
-// A meeting request's own time ("Thu 8/10/2026 5:30 PM - 8:00 PM") is on a card under its row, which Outlook draws
-// several seconds after the list. The row's `time` is only when the invite arrived.
-const MEETING_TIME = /(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun) \d{1,2}\/\d{1,2}\/\d{4}(?: \d{1,2}:\d{2} [AP]M(?: - \d{1,2}:\d{2} [AP]M)?| \(all day\))?/;
-const isMeeting = r => /^(?:\S+ ){0,3}Meeting /.test(r.label || '');
-
+// Each invite's own time, off the card Outlook draws under its row a few seconds after the list (isMeeting)
 async function meetingTimes(page, ids) {
-  return page.evaluate(async ({ ids, re }) => {
-    const rx = new RegExp(re), found = {};
-    const sc = document.querySelector('[role=listbox] .customScrollBar') || document.querySelector('[role=listbox]');
-    if (sc) sc.scrollTop = 0;   // invites are recent: back to the top, where their rows are drawn
-    for (let i = 0; i < 12 && Object.keys(found).length < ids.length; i++) {
-      for (const id of ids) {
-        const o = document.querySelector(`[role=option][data-convid="${CSS.escape(id)}"]`);
-        const m = o && o.innerText.match(rx);
-        if (m) found[id] = m[0];
-      }
-      if (Object.keys(found).length < ids.length) await new Promise(r => setTimeout(r, 1000));
+  await page.evaluate(scrollList, true);   // invites are recent: back to the top, where their rows are drawn
+  const found = {};
+  for (let i = 0; i < 12 && Object.keys(found).length < ids.length; i++) {
+    for (const [id, text] of Object.entries(await page.evaluate(rowTexts, ids.filter(id => !found[id])))) {
+      const m = meetingTime(text);
+      if (m) found[id] = m;
     }
-    return found;
-  }, { ids, re: MEETING_TIME.source });
+    if (Object.keys(found).length < ids.length) await sleep(1000);
+  }
+  return found;
 }
 
 async function readFolder(page, url) {
@@ -90,7 +67,7 @@ async function readFolder(page, url) {
   // organisation's sign-in age - so look again once the list has had its chance, or that reads as an empty folder
   if (!await signedIn(page)) return null;
   await sleep(800);
-  const rows = await page.evaluate(ROWS(SINCE));
+  const rows = await readRows(page);
   const invites = rows.filter(isMeeting).map(r => r.convid);
   if (invites.length) {
     const times = await meetingTimes(page, invites);
@@ -125,7 +102,7 @@ async function outlook(page, prev) {
     await page.waitForFunction(() => [...document.querySelectorAll('[aria-label]')]
       .some(e => / to \d{1,2}:\d{2} [AP]M|all day/i.test(e.getAttribute('aria-label') || '')), null, { timeout: 8000 }).catch(() => {});
     if (!await signedIn(page)) { mail.signin_needed = true; return []; }   // as for the folders
-    return page.evaluate(CALENDAR);
+    return calendarEvents(await page.evaluate(pageLabels));
   });
   return mail;
 }
@@ -153,10 +130,9 @@ async function teams(page) {
     }
   });
   if (!await signedIn(page)) return { signin_needed: true, conversations: [] };   // Teams too can go to sign-in after it opens
-  const extract = readFileSync(join(HERE, 'teams-extract.js'), 'utf8')
-    .replace('__SINCE__', SINCE).replace('__ACTIVE_SINCE__', FIRST === 'yes' ? LOOKBACK : SINCE).replace('__LOOKBACK__', LOOKBACK);
-  const data = await timed('Teams extract', () => page.evaluate(`(${extract})()`));
-  return { signin_needed: false, conversations: data.conversations.filter(c => !BOTS.includes(c.name)) };
+  const raw = await timed('Teams extract', () => page.evaluate(readCache, Date.parse(LOOKBACK)));
+  // a conversation silent since the last run has nothing to re-judge (on a first run, the whole lookback counts)
+  return { signin_needed: false, conversations: conversations(raw, { since: SINCE, activeSince: FIRST === 'yes' ? LOOKBACK : SINCE, lookback: LOOKBACK, skip: config.teams.skip_chats }) };
 }
 
 function fromPrev(file) {

@@ -73,7 +73,7 @@ Each label is `Title, 9:30 AM to 9:45 AM, Friday, September 25, 2026, [location]
 
 ## Step 4: Teams — `teams`
 
-The collector reads Teams' own cache (IndexedDB), with `teams-extract.js`, once it has caught up — no network call of its own, no chat opened, nothing marked read. `teams.signin_needed` and `teams.error` are handled like Outlook's (step 3).
+The collector reads Teams' own cache (IndexedDB), with `teams.mjs`, once it has caught up — no network call of its own, no chat opened, nothing marked read. `teams.signin_needed` and `teams.error` are handled like Outlook's (step 3).
 
 `teams.conversations[]` has `kind` (`dm` / `group` / `meeting`; channels aren't read), `name`, `unread`, and `messages[]` of `{id, at, from, unread, text}` where `from: "ME"` is the user. Bot chats the user listed are already left out: they're tests or reminders, not people.
 Only conversations with something new since `SINCE` are included (since `LOOKBACK` on a first run) — the others have nothing to re-judge; their loops come from `PREV`. A conversation the user took part in carries the whole lookback of history, for context. No conversations and no error means a quiet stretch.
