@@ -1,5 +1,6 @@
 // Meta-Nav's background service, started at login by launchd (macOS) or Task Scheduler (Windows):
-// - the hourly run: it starts run.mjs on the hour (run.mjs itself keeps to weekdays within config.hours);
+// - the scheduled runs: it starts run.mjs every config.schedule.every_minutes (run.mjs itself keeps to weekdays within
+//   its hours);
 // - the click store: the panel's "done", "resolved" and "Got it" clicks, and the user's tactics, kept in one file that
 //   every browser and every run share. A page opened from disk can read files beside it but can't write any, so this
 //   service writes for it.
@@ -14,7 +15,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
-import { OUT, PROFILE, SKILL, chromePath, tool } from './common.mjs';
+import { OUT, PROFILE, SCHEDULE, SKILL, chromePath, tool } from './common.mjs';
 
 const PORT = 47615;
 const KEYS = ['tower:dismissed', 'tower:read', 'metanav:tactics'];
@@ -42,14 +43,14 @@ function start(manual) {
 }
 const refresh = () => start(true);
 
-// On the hour, every hour. A timer looks twice a minute, so after the computer wakes up, the hour it slept through runs
-// straight away. Not when the service starts: logging in isn't the hour turning.
-const hourOf = d => `${d.toDateString()} ${d.getHours()}`;
-let lastHour = hourOf(new Date());
+// Every so many minutes, counted from midnight (every 60: on the hour). A timer looks twice a minute, so after the
+// computer wakes up, the slot it slept through runs straight away. Not when the service starts: logging in isn't a slot turning.
+const slotOf = d => `${d.toDateString()} ${Math.floor((d.getHours() * 60 + d.getMinutes()) / SCHEDULE.every_minutes)}`;
+let lastSlot = slotOf(new Date());
 setInterval(() => {
-  const h = hourOf(new Date());
-  if (h === lastHour) return;
-  lastHour = h;
+  const s = slotOf(new Date());
+  if (s === lastSlot) return;
+  lastSlot = s;
   // one run at a time (run.mjs locks too), and not while a sign-in window holds the browser profile
   if (!existsSync(join(OUT, '.running')) && !signing.has('microsoft')) start(false);
 }, 30e3);

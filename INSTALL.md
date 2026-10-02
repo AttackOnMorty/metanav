@@ -11,7 +11,7 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
 2. **Check prerequisites.** Report anything missing, with the exact fix:
    - The agent that will judge each run is signed in: `claude` for Claude Code (a short `claude -p "say ok"` answers), or `codex login status` for Codex.
    - `node` (18 or later) and `npm` are on the user's PATH.
-   - **Windows:** Git for Windows is installed — Claude Code on Windows needs its Git Bash. With Codex, note that its sandbox on Windows is still experimental: if the first run's log shows a sandbox error, use Claude Code (`agent: "claude"`).
+   - **Windows:** Git for Windows is installed — Claude Code on Windows needs its Git Bash. With Codex, note that its sandbox on Windows is still experimental: if the first run's log shows a sandbox error, use Claude Code (`judge.agent: "claude"`).
    - Google Chrome is installed (macOS: in `/Applications`; Windows: under `Program Files` or `%LOCALAPPDATA%`, in `Google\Chrome\Application\chrome.exe`).
    - `gh auth status` succeeds, and its token scopes include `read:project`. If not, the user runs `gh auth refresh -h github.com -s read:project` themselves — it's interactive.
    - Nothing is listening on port 47615. macOS: `lsof -nP -iTCP:47615 -sTCP:LISTEN` prints nothing. Windows: `Get-NetTCPConnection -LocalPort 47615 -State Listen` finds nothing.
@@ -24,12 +24,12 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
    - `github.org`: the GitHub organisation the user's work lives in.
    - `mail.received_folders`: Inbox (already filled in), plus every Inbox subfolder the user's rules file work mail into. For each subfolder, ask the user to open it in Outlook on the web and paste the address bar's URL; use the folder name exactly as Outlook shows it.
    - `teams.skip_chats`: bot or reminder chats to skip, by their name in Teams (e.g. `Workflows`).
-   - `hours`: when scheduled runs happen, weekdays, on the hour. The default is 9 to 18.
-   - `agent`: `"claude"` if you are Claude Code, `"codex"` if you are Codex — the agent each run calls to judge.
-   - `judge_model`: for Claude, `"opus"` (`"sonnet"` is cheaper and faster but follows the rules less reliably). For Codex, leave it `""` for Codex's default model, or name one.
+   - `schedule`: when syncs run by themselves, on weekdays — `every_minutes` (60), between `start_hour` (9) and `end_hour` (18).
+   - `judge.agent`: `"claude"` if you are Claude Code, `"codex"` if you are Codex — the agent each run calls to judge.
+   - `judge.model`: for Claude, `"opus"` (`"sonnet"` is cheaper and faster but follows the rules less reliably). For Codex, leave it `""` for Codex's default model, or name one.
    - `azure_devops.enabled`: leave it `false` unless the user's work is (also) in Azure DevOps. If it is, set it to `true`: Meta-Nav then reads their work items, reviews, pull requests and @mentions in every organisation their account belongs to. Then check `az` is installed and signed in with that account (`az account show`).
 
-5. **Set up the background service** (`state.mjs`): it starts a run on the hour, and keeps the panel's clicks. Create `<OUT>/logs` first.
+5. **Set up the background service** (`state.mjs`): it starts the scheduled runs, and keeps the panel's clicks. Create `<OUT>/logs` first.
 
    **macOS** (launchd):
    - In `metanav.plist`, replace `__PATH__` with a PATH for launchd: the directories holding `node`, the agent's CLI (`claude` or `codex`), `gh` (and `az` if `ado` is set), then `/usr/bin:/bin:/usr/sbin:/sbin`, without duplicates. Use each real binary's directory (for `claude` usually `~/.local/bin`), not a terminal's wrapper under `/var/folders` — `type -a claude` lists them all.

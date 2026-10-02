@@ -12,6 +12,8 @@ export const CONFIG = join(SKILL, 'config.json');
 export const config = JSON.parse(readFileSync(CONFIG, 'utf8'));
 export const OUT = (config.output_dir || '~/metanav').replace(/^~(?=$|[\\/])/, homedir());
 export const SENT = 'https://outlook.office.com/mail/sentitems';   // the same for everyone
+// Scheduled syncs: every so many minutes, on weekdays between these hours
+export const SCHEDULE = { every_minutes: 60, start_hour: 9, end_hour: 18, ...config.schedule };
 export const WIN = process.platform === 'win32';
 
 // The runs' own browser profile, named after the output dir, in this OS's cache folder

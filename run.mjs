@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 // Refresh Meta-Nav: hours guard, lock, collect, judge, render, clean up.
-// launchd (macOS) or Task Scheduler (Windows) fires it on the hour; `metanav` and the panel's SYNC NOW drop a .manual
+// The background service (state.mjs) starts it on config.schedule; `metanav` and the panel's SYNC NOW drop a .manual
 // flag first, which skips the hours.
 // Everything here is deterministic. The only judgement - what's yours, what others owe you, in what order - is one
 // call to the agent in config.json ("claude" or "codex"), which reads files and writes one file, brief.json.
-//   node run.mjs            a scheduled run (weekdays within config.hours, unless .manual is there)
+//   node run.mjs            a scheduled run (weekdays within config.schedule's hours, unless .manual is there)
 //   node run.mjs --rescan   a full rescan: rebuild everything over the whole lookback
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONFIG, OUT, SKILL, config, tool } from './common.mjs';
+import { CONFIG, OUT, SCHEDULE, SKILL, config, tool } from './common.mjs';
 import { renderBrief, repaint } from './render.mjs';
 
 const RESCAN = process.argv.includes('--rescan');
@@ -22,8 +22,7 @@ const manual = join(OUT, '.manual');
 if (existsSync(manual)) rmSync(manual);
 else {
   const day = now.getDay(), hour = now.getHours();
-  const { start = 9, end = 18 } = config.hours || {};
-  if (day < 1 || day > 5 || hour < start || hour > end) process.exit(0);
+  if (day < 1 || day > 5 || hour < SCHEDULE.start_hour || hour > SCHEDULE.end_hour) process.exit(0);
 }
 
 mkdirSync(join(OUT, 'logs'), { recursive: true });
@@ -70,8 +69,8 @@ CONFIG=${CONFIG}
 BRIEF=${BRIEF}
 Write your result to BRIEF and change no other file. Then reply with the summary JUDGE.md asks for.`;
 
-const agent = config.agent || 'claude';
-const model = config.judge_model || '';
+const agent = config.judge?.agent || 'claude';
+const model = config.judge?.model || '';
 const t0 = Date.now();
 let log;
 if (agent === 'codex') {
@@ -100,7 +99,7 @@ log.duration_ms ??= Date.now() - t0;
 log.collect = collected;
 
 // Render what the judge wrote. A run that wrote nothing usable leaves the last good result up - the panel marks it
-// stale once it's over 90 minutes old.
+// stale once it's over one and a half intervals old.
 let brief = null;
 try { brief = JSON.parse(readFileSync(BRIEF, 'utf8')); } catch (e) { log.is_error = true; log.brief_error = String(e.message || e); }
 if (brief) {

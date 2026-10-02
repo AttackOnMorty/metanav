@@ -189,7 +189,6 @@ Write it to `BRIEF`, the whole file at once, as valid JSON.
 {
   "date": "2026-09-26",
   "generated_at": "<now, UTC ISO8601 — run.mjs replaces it with the collection time>",
-  "interval_min": 60,
   "since": "<SINCE>",
   "headline": "One sentence: the single most important thing right now.",
   "tradeoffs": ["Where the ranking rules conflicted, which won and why."],

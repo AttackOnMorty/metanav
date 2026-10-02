@@ -22,7 +22,7 @@ This document follows one refresh from start to finish, then explains each part 
 
 ## 1. When it refreshes
 
-- **On a schedule.** Meta-Nav's background service (`state.mjs`, started at login by launchd on macOS or Task Scheduler on Windows) starts a run on the hour. `run.mjs` only goes ahead on weekdays within `hours` in `config.json` (9:00 to 18:00 by default). If the computer was asleep on the hour, the run starts as soon as it wakes.
+- **On a schedule.** Meta-Nav's background service (`state.mjs`, started at login by launchd on macOS or Task Scheduler on Windows) starts a run every `schedule.every_minutes` in `config.json` (on the hour by default). `run.mjs` only goes ahead on weekdays between `start_hour` and `end_hour` (9:00 to 18:00 by default). If the computer was asleep when a run was due, it starts as soon as it wakes.
 - **On demand, at any hour.** Use the **SYNC NOW** button on the page, or type `metanav` in a terminal.
 - **One at a time.** A lock stops two runs overlapping. While a run works, the page shows **Syncing**.
 - **Incremental.** Each run starts from the previous run's judgement. It re-checks everything that was still open, and reads only what's new since the last run. The very first run reads the last 30 days, so an ask nobody answered three weeks ago still turns up.
@@ -44,7 +44,7 @@ If Microsoft asks you to sign in again, that source is marked failed and the pag
 
 ## 3. Judging (the AI)
 
-The judge — Claude Code (Opus by default) or Codex, set by `agent` and `judge_model` in `config.json` — reads the inputs, the previous run's result and your clicks. It can only read files and write its one result file: no network, no shell. It sorts everything into four lists:
+The judge — Claude Code (Opus by default) or Codex, set by `judge` in `config.json` — reads the inputs, the previous run's result and your clicks. It can only read files and write its one result file: no network, no shell. It sorts everything into four lists:
 
 | List | On the page | What goes in |
 | --- | --- | --- |
