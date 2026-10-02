@@ -7,7 +7,7 @@
     "org": "your-github-org"
   },
   "azure_devops": {
-    "enabled": false
+    "orgs": []
   },
   "mail": {
     "received_folders": [

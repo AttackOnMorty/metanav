@@ -27,7 +27,7 @@ Below, `<SKILL>` is the skill's folder in your own skills folder — `~/.claude/
    - `schedule`: when syncs run by themselves, on weekdays — `every_minutes` (60), between `start_hour` (9) and `end_hour` (18).
    - `judge.agent`: `"claude"` if you are Claude Code, `"codex"` if you are Codex — the agent each run calls to judge.
    - `judge.model`: for Claude, `"opus"` (`"sonnet"` is cheaper and faster but follows the rules less reliably). For Codex, leave it `""` for Codex's default model, or name one.
-   - `azure_devops.enabled`: leave it `false` unless the user's work is (also) in Azure DevOps. If it is, set it to `true`: Meta-Nav then reads their work items, reviews, pull requests and @mentions in every organisation their account belongs to. Then check `az` is installed and signed in with that account (`az account show`).
+   - `azure_devops.orgs`: the Azure DevOps organisations to read, by name; leave it `[]` if the user's work isn't in Azure DevOps. If `az` is installed and signed in (`az account show`), list the organisations their account belongs to and ask which to keep — `ID=$(az rest --resource 499b84ac-1321-427f-aa17-267ca6975798 --url "https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1" --query id -o tsv)`, then `az rest --resource 499b84ac-1321-427f-aa17-267ca6975798 --url "https://app.vssps.visualstudio.com/_apis/accounts?memberId=$ID&api-version=7.1" --query "value[].accountName" -o tsv` (in PowerShell, `$ID` is set the same way). Meta-Nav reads their work items, reviews, pull requests and @mentions in each.
 
 5. **Set up the background service** (`state.mjs`): it starts the scheduled runs, and keeps the panel's clicks. Create `<OUT>/logs` first.
 

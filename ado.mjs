@@ -1,6 +1,6 @@
 // Azure DevOps for Meta-Nav, read the way GitHub is: the work assigned to you that's under way, pull requests waiting
-// on your review, your own pull requests' next step, and where someone @mentioned you - in every organisation your
-// account belongs to. Deterministic, no judgement; the shapes match GitHub's.
+// on your review, your own pull requests' next step, and where someone @mentioned you - in each organisation listed in
+// config.azure_devops.orgs. Deterministic, no judgement; the shapes match GitHub's.
 import { ado, config } from './common.mjs';
 
 const V = 'api-version=7.1';
@@ -11,20 +11,20 @@ const daysSince = t => Math.floor((Date.now() - Date.parse(t)) / 864e5);
 const name = u => u?.displayName?.replace(/\s*\[[^\]]*\]$/, '') || null;   // "Sam Lee [Acme]" -> "Sam Lee"
 
 export async function fromAdo(SINCE, LOOKBACK) {
-  if (!config.azure_devops?.enabled) return { ok: true, skipped: true };
-  // every organisation the signed-in account is a member of; one that can't be read doesn't hold up the others
-  const profile = await ado('https://app.vssps.visualstudio.com/_apis/profile/profiles/me?api-version=7.1');
-  const orgs = ((await ado(`https://app.vssps.visualstudio.com/_apis/accounts?memberId=${profile.id}&api-version=7.1`)).value || [])
-    .map(a => `https://dev.azure.com/${a.accountName}`);
-  const out = { ok: true, me: profile.displayName || null, orgs: [], review_requests: [], work: [], mentions: [], errors: [] };
+  // each organisation by name ("contoso", or its https://dev.azure.com/contoso link); one that can't be read doesn't hold
+  // up the others
+  const orgs = (config.azure_devops?.orgs || []).map(o => `https://dev.azure.com/${String(o).replace(/^https:\/\/dev\.azure\.com\//, '').split('/')[0]}`);
+  if (!orgs.length) return { ok: true, skipped: true };
+  const out = { ok: true, me: null, orgs: [], review_requests: [], work: [], mentions: [], errors: [] };
   for (const ORG of orgs) {
     try {
       const r = await fromOrg(ORG, SINCE, LOOKBACK);
       out.orgs.push(ORG);
+      out.me ??= r.me;
       for (const k of ['review_requests', 'work', 'mentions']) out[k].push(...r[k]);
     } catch (e) { out.errors.push(`${ORG}: ${String(e.message || e).slice(0, 200)}`); }
   }
-  if (orgs.length && !out.orgs.length) throw new Error(out.errors[0]);
+  if (!out.orgs.length) throw new Error(out.errors[0]);
   if (!out.errors.length) delete out.errors;
   return out;
 }
@@ -161,7 +161,7 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
     });
   }
   pbis.forEach(b => b.comments.forEach(c => delete c.me));
-  return { review_requests, work, mentions };
+  return { me: me.providerDisplayName || null, review_requests, work, mentions };
 }
 
 // Current state of Azure DevOps work items and PRs a carried-over item points at, by URL - so the run can tell a merged
