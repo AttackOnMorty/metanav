@@ -1,19 +1,14 @@
-// GitHub + Azure DevOps state for Meta-Nav. Deterministic, no judgement.
+// GitHub + Azure DevOps state for Meta-Nav. Deterministic, no judgement: the GitHub adapter (fetched here, read into
+// codehost.mjs's shape) and, through ado.mjs, Azure DevOps.
 // Usage: node fetch.mjs <SINCE> [LOOKBACK]   (ISO 8601 UTC) -> prints one JSON object; collect.mjs imports fetchAll instead
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fromAdo } from './ado.mjs';
+import { BODY, carriedOver, comment, githubLists } from './codehost.mjs';
 import { config, github, graphql } from './common.mjs';
 
 const pad = n => String(n).padStart(2, '0');
 const localDay = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const daysSince = t => Math.floor((Date.now() - Date.parse(t)) / 864e5);
-const max = xs => xs.filter(Boolean).sort().pop() ?? null;
-// drop a size prefix, e.g. "XL⚠️ ◾ feat: ..." -> "feat: ..."
-const clean = s => (s || '').replace(/^[^◾]{0,8}◾\s*/u, '');
-// a sprint runs from its start for `duration` days: current when start <= today < end
-const sprintEnd = sp => new Date(Date.parse(`${sp.startDate}T00:00:00Z`) + sp.duration * 864e5).toISOString().slice(0, 10);
-const current = (sp, today) => !!sp && sp.startDate <= today && sprintEnd(sp) > today;
 
 async function fromGithub(SINCE) {
   const owner = config.github.org;
@@ -37,66 +32,8 @@ async function fromGithub(SINCE) {
       status: fieldValueByName(name: "Status") { ... on ProjectV2ItemFieldSingleSelectValue { name } }
       sprint: fieldValueByName(name: "Sprint") { ... on ProjectV2ItemFieldIterationValue { title startDate duration } } } } } } }
 }`);
-  const me = d.me.login, today = localDay();
-  const nodes = x => (x?.nodes || []).filter(Boolean);
-
-  // Each PR resolved to its parent PBI, in trust order: GitHub's closing reference, a "1234-" branch prefix, then a
-  // line-anchored "Part of / Fixes #N". A bare "#N" in prose is never used - it is usually incidental discussion.
-  const prs = nodes(d.mine).map(p => {
-    const fb = [...nodes(p.comments), ...nodes(p.reviews)];
-    // feedback counts only if it came after both the window start and my own last reply
-    const after = max([SINCE, ...fb.filter(f => f.author?.login === me).map(f => f.createdAt)]);
-    const fresh = fb.filter(f => f.author?.__typename === 'User' && f.author.login !== me && f.createdAt > after)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const keyword = (p.body || '').match(/^\s*(?:part of|fixes|fixed|closes|closed|resolves|resolved) #(\d{2,6})/im);
-    return {
-      repo: p.repository.name, number: p.number, title: clean(p.title), url: p.url, draft: p.isDraft, since: p.createdAt,
-      size: { files: p.changedFiles, added: p.additions, removed: p.deletions },
-      review: p.reviewDecision || 'PENDING',
-      ci: nodes(p.commits)[0]?.commit?.statusCheckRollup?.state || 'NONE',
-      unresolved_threads: nodes(p.reviewThreads).filter(t => !t.isResolved).length,
-      new_feedback: fresh.length,
-      // the newest of that feedback, to open it directly rather than the top of the PR
-      latest_feedback_url: fresh.at(-1)?.url ?? null,
-      parent: nodes(p.closingIssuesReferences)[0]?.number ?? (+(p.headRefName.match(/^(\d{2,6})-/) || [])[1] || null)
-        ?? (keyword ? +keyword[1] : null),
-    };
-  });
-
-  const pbis = nodes(d.issues).flatMap(i => {
-    const p = nodes(i.projectItems)[0] || {}, status = p.status?.name || '';
-    if (/done/i.test(status) || !(current(p.sprint, today) || /progress|review|block/i.test(status))) return [];
-    return [{
-      repo: i.repository.name, number: i.number, title: i.title, url: i.url,
-      // when it became theirs: the last time it was assigned to them, else when it was opened
-      since: nodes(i.timelineItems).filter(e => e.assignee?.login === me).at(-1)?.createdAt || i.createdAt,
-      // what it says: the whole body and its comments (each capped only against pasted logs)
-      assignees: nodes(i.assignees).map(a => a.login), body: (i.body || '').slice(0, 20000),
-      comments: nodes(i.comments).map(c => ({ by: c.author?.login, at: c.createdAt, url: c.url, text: (c.body || '').slice(0, 2000) })),
-      status: status || '-', sprint: p.sprint?.title || '-',
-      // the day the sprint ends - the PBI deadline, when its board runs sprints and this one is current
-      sprint_end: current(p.sprint, today) ? sprintEnd(p.sprint) : null,
-    }];
-  });
-
-  // A re-request after my review is a new wait: count from my last review, not from PR creation.
-  // Drafts stay in: an author may park a PR as a draft while it waits on my review. The run decides whether it matters.
-  const review_requests = nodes(d.review).map(p => {
-    const mine = max(nodes(p.reviews).filter(r => r.author?.login === me).map(r => r.submittedAt));
-    const since = max([p.createdAt, mine || p.createdAt]);
-    return {
-      repo: p.repository.name, number: p.number, title: clean(p.title), url: p.url, author: p.author?.login,
-      draft: p.isDraft, rereview: mine != null,
-      size: { files: p.changedFiles, added: p.additions, removed: p.deletions },   // what a review of it takes
-      since, waiting_days: daysSince(since),
-    };
-  });
-
-  // "My work": one row per PBI with its PRs nested; PRs with no PBI on the board sit flat
-  const work = [
-    ...pbis.map(b => ({ ...b, kind: 'pbi', prs: prs.filter(r => r.repo === b.repo && r.parent === b.number) })),
-    ...prs.filter(r => !pbis.some(b => b.repo === r.repo && b.number === r.parent)).map(r => ({ ...r, kind: 'pr' })),
-  ];
+  const me = d.me.login;
+  const lists = githubLists(d, { since: SINCE, today: localDay() });
 
   // @mentions since SINCE. They reach the user only as GitHub notification mail, which the run never reads; the
   // notifications API gives them directly, and a GET marks nothing read. Each carries the issue or PR itself - state,
@@ -110,14 +47,14 @@ async function fromGithub(SINCE) {
       const api = (n.subject.url || '').replace('/pulls/', '/issues/');   // a PR is an issue too, for its body and comments
       const detail = api ? await github(api).catch(() => null) : null;
       const comments = api ? ((await github(`${api}/comments?per_page=100`).catch(() => [])) || []).slice(-20)
-        .map(c => ({ by: c.user?.login, at: c.created_at, url: c.html_url, text: (c.body || '').slice(0, 2000) })) : [];
-      const extra = detail ? { state: detail.state, assignees: (detail.assignees || []).map(a => a.login), author: detail.user?.login, body: (detail.body || '').slice(0, 20000) } : {};
+        .map(c => comment({ by: c.user?.login, at: c.created_at, url: c.html_url, text: c.body })) : [];
+      const extra = detail ? { state: detail.state, assignees: (detail.assignees || []).map(a => a.login), author: detail.user?.login, body: (detail.body || '').slice(0, BODY) } : {};
       const last_by = comments.at(-1)?.by ?? extra.author ?? null;
       return { ...m, ...extra, comments, last_by, answered: last_by === me };
     }));
   } catch { /* mentions are extra: a failure here leaves the rest of GitHub standing */ }
 
-  return { ok: true, review_requests, work, mentions };
+  return { ok: true, ...lists, mentions };
 }
 
 export async function fetchAll(SINCE, LOOKBACK) {
@@ -126,6 +63,35 @@ export async function fetchAll(SINCE, LOOKBACK) {
     fromAdo(SINCE, LOOKBACK).catch(e => ({ ok: false, error: `${String(e.message || e).slice(0, 200)} - run \`az login\`` })),
   ]);
   return { since: SINCE, github: gh, ado: az };
+}
+
+// GitHub PRs and issues the run points at that this run's lists don't carry - the previous run's items (`carried`, its
+// links), and for PRs also links in mail and chats (`linked`, text) - with their state now, so the run needn't look
+// them up one by one and can re-judge whose an issue is when nothing new came in about it. One GraphQL call each.
+export async function githubStates(carried, linked, gh) {
+  const prsKnown = [...(gh.review_requests || []), ...(gh.work || []).flatMap(w => [w, ...(w.prs || [])])].map(p => p.url);
+  const issuesKnown = [...(gh.work || []).map(w => w.url), ...(gh.mentions || []).map(m => m.url)];
+  const prs = carriedOver(JSON.stringify([carried, linked]), /https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g, prsKnown, 40);
+  const issues = carriedOver(JSON.stringify(carried), /https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/\d+/g, issuesKnown, 30);
+  const lookup = async (urls, field, ask, shape) => {
+    if (!urls.length) return {};
+    const parts = urls.map((u, i) => {
+      const [, owner, repo, n] = u.match(/github\.com\/([\w.-]+)\/([\w.-]+)\/(?:pull|issues)\/(\d+)/);
+      return `x${i}: repository(owner: "${owner}", name: "${repo}") { ${field}(number: ${n}) { ${ask} } }`;
+    });
+    try {
+      const data = await graphql(`query { ${parts.join('\n')} }`);
+      return Object.fromEntries(urls.map((u, i) => [u, data[`x${i}`]?.[field] ? shape(data[`x${i}`][field]) : null]));
+    } catch (e) {
+      return { error: String(e.message || e).slice(0, 200) };
+    }
+  };
+  return {
+    pr_states: await lookup(prs, 'pullRequest', 'title state isDraft reviewDecision mergedAt closedAt updatedAt author { login } latestReviews(first: 10) { nodes { author { login } state submittedAt } }', x => x),
+    issue_states: await lookup(issues, 'issue', 'title state body assignees(first: 5) { nodes { login } } comments(last: 20) { nodes { url author { login } createdAt body } }',
+      x => ({ title: x.title, state: x.state, assignees: x.assignees.nodes.map(a => a.login), body: (x.body || '').slice(0, BODY),
+        comments: x.comments.nodes.map(c => comment({ by: c.author?.login, at: c.createdAt, url: c.url, text: c.body })) })),
+  };
 }
 
 if (fileURLToPath(import.meta.url) === resolve(process.argv[1] || '')) console.log(JSON.stringify(await fetchAll(process.argv[2], process.argv[3] || process.argv[2])));

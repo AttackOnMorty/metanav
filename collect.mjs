@@ -9,9 +9,9 @@
 import { chromium } from 'playwright-core';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { PROFILE, SENT, SKILL as HERE, config, graphql } from './common.mjs';
+import { PROFILE, SENT, SKILL as HERE, config } from './common.mjs';
 import { adoStates } from './ado.mjs';
-import { fetchAll } from './fetch.mjs';
+import { fetchAll, githubStates } from './fetch.mjs';
 
 const [SINCE, LOOKBACK, FIRST, PREV, OUT] = process.argv.slice(2);
 const BOTS = config.teams.skip_chats;   // bot and reminder chats: not people
@@ -159,49 +159,6 @@ async function teams(page) {
   return { signin_needed: false, conversations: data.conversations.filter(c => !BOTS.includes(c.name)) };
 }
 
-// Current state of every PR the inputs point at - carried-over items, links in chats and mail - so the run
-// needn't query GitHub item by item. One GraphQL call.
-async function prStates(prev, mail, teamsData, github) {
-  const known = new Set([...(github.review_requests || []), ...(github.work || []).flatMap(w => [w, ...(w.prs || [])])].map(p => p.url));
-  const text = JSON.stringify([prev.urls, Object.values(mail.folders || {}).flat().map(r => r.label),
-    (teamsData.conversations || []).flatMap(c => c.messages.map(m => m.text))]);
-  const urls = [...new Set(text.match(/https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+/g) || [])].filter(u => !known.has(u)).slice(0, 40);
-  if (!urls.length) return {};
-  const parts = urls.map((u, i) => {
-    const [, owner, repo, n] = u.match(/github\.com\/([\w.-]+)\/([\w.-]+)\/pull\/(\d+)/);
-    return `p${i}: repository(owner: "${owner}", name: "${repo}") { pullRequest(number: ${n}) { title state isDraft reviewDecision mergedAt closedAt updatedAt author { login } latestReviews(first: 10) { nodes { author { login } state submittedAt } } } }`;
-  });
-  try {
-    const data = await graphql(`query { ${parts.join('\n')} }`);
-    return Object.fromEntries(urls.map((u, i) => [u, data[`p${i}`]?.pullRequest ?? null]));
-  } catch (e) {
-    return { error: String(e.message || e).slice(0, 200) };
-  }
-}
-
-// Issues carried over from the last run (a mention, an ask filed as an issue): their state now, who they're assigned
-// to, and what they say, so the run can re-judge whose they are even when nothing new came in about them. One call.
-async function issueStates(prev, github) {
-  const known = new Set([...(github.work || []).map(w => w.url), ...(github.mentions || []).map(m => m.url)]);
-  const urls = [...new Set(JSON.stringify(prev.urls).match(/https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/issues\/\d+/g) || [])]
-    .filter(u => !known.has(u)).slice(0, 30);
-  if (!urls.length) return {};
-  const parts = urls.map((u, i) => {
-    const [, owner, repo, n] = u.match(/github\.com\/([\w.-]+)\/([\w.-]+)\/issues\/(\d+)/);
-    return `i${i}: repository(owner: "${owner}", name: "${repo}") { issue(number: ${n}) { title state body assignees(first: 5) { nodes { login } } comments(last: 20) { nodes { url author { login } createdAt body } } } }`;
-  });
-  try {
-    const data = await graphql(`query { ${parts.join('\n')} }`);
-    return Object.fromEntries(urls.map((u, i) => {
-      const x = data[`i${i}`]?.issue;
-      return [u, x ? { title: x.title, state: x.state, assignees: x.assignees.nodes.map(a => a.login), body: (x.body || '').slice(0, 20000),
-        comments: x.comments.nodes.map(c => ({ by: c.author?.login, at: c.createdAt, url: c.url, text: (c.body || '').slice(0, 2000) })) } : null];
-    }));
-  } catch (e) {
-    return { error: String(e.message || e).slice(0, 200) };
-  }
-}
-
 function fromPrev(file) {
   if (!file) return { mail_ids: [], urls: [] };
   try {
@@ -235,15 +192,11 @@ try {
 const fetched = await fetching;
 out.github = fetched.github;
 out.ado = fetched.ado;
-out.pr_states = await timed('PR states', () => prStates(prev, out.mail, out.teams, out.github || {}));
-out.issue_states = await timed('issue states', () => issueStates(prev, out.github || {}));
-// Azure DevOps work items and PRs carried over from the last run that aren't in this run's lists, the same way
-if (out.ado?.ok && !out.ado.skipped) {
-  const known = new Set([...(out.ado.work || []).flatMap(w => [w, ...(w.prs || [])]), ...(out.ado.review_requests || []), ...(out.ado.mentions || [])].map(x => x.url));
-  const urls = [...new Set(JSON.stringify(prev.urls).match(/https:\/\/dev\.azure\.com\/[^"\s?#]+\/(?:_workitems\/edit|pullrequest)\/\d+/g) || [])]
-    .filter(u => !known.has(u)).slice(0, 30);
-  out.ado_states = urls.length ? await timed('ADO states', () => adoStates(urls)) : {};
-}
+// The current state of items the previous run points at (and, for GitHub PRs, links in mail and chats) that this
+// run's lists don't carry, from each code host
+const linked = [Object.values(out.mail.folders || {}).flat().map(r => r.label), (out.teams.conversations || []).flatMap(c => c.messages.map(m => m.text))];
+Object.assign(out, await timed('GitHub states', () => githubStates(prev.urls, linked, out.github || {})));
+if (out.ado?.ok && !out.ado.skipped) out.ado_states = await timed('ADO states', () => adoStates(prev.urls, out.ado));
 timings.total = +((Date.now() - t0) / 1000).toFixed(1);
 out.timings = timings;
 writeFileSync(OUT, JSON.stringify(out));

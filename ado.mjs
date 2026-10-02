@@ -1,13 +1,13 @@
 // Azure DevOps for Meta-Nav, read the way GitHub is: the work assigned to you that's under way, pull requests waiting
 // on your review, your own pull requests' next step, and where someone @mentioned you - in each organisation listed in
-// config.azure_devops.orgs. Deterministic, no judgement; the shapes match GitHub's.
+// config.azure_devops.orgs. Deterministic: it fetches, and codehost.mjs decides what the answers mean, in GitHub's shapes.
+import { BODY, adoCi, adoReview, adoReviewWait, carriedOver, comment, daysSince, freshFeedback, workTree } from './codehost.mjs';
 import { ado, config } from './common.mjs';
 
 const V = 'api-version=7.1';
 const text = html => String(html || '').replace(/<br\s*\/?>|<\/(p|div|li)>/gi, '\n').replace(/<[^>]+>/g, '')
   .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&')
   .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
-const daysSince = t => Math.floor((Date.now() - Date.parse(t)) / 864e5);
 const name = u => u?.displayName?.replace(/\s*\[[^\]]*\]$/, '') || null;   // "Sam Lee [Acme]" -> "Sam Lee"
 
 export async function fromAdo(SINCE, LOOKBACK) {
@@ -41,7 +41,7 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
   const wiUrl = w => `${ORG}/${encodeURIComponent(f(w, 'TeamProject'))}/_workitems/edit/${w.id}`;
   const comments = async w => ((await ado(`${ORG}/${encodeURIComponent(f(w, 'TeamProject'))}/_apis/wit/workItems/${w.id}/comments?$top=200&api-version=7.1-preview.4`)).comments || [])
     .sort((a, b) => a.createdDate.localeCompare(b.createdDate)).slice(-20)
-    .map(c => ({ by: name(c.createdBy), me: isMe(c.createdBy), at: c.createdDate, url: wiUrl(w), text: text(c.text).slice(0, 2000) }));
+    .map(c => ({ ...comment({ by: name(c.createdBy), at: c.createdDate, url: wiUrl(w), text: text(c.text) }), me: isMe(c.createdBy) }));
 
   // Each project's states and what they mean (Proposed / InProgress / Resolved / Completed / Removed), and each sprint's dates
   const stateCats = {}, sprints = {};
@@ -75,7 +75,7 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
     pbis.push({
       repo: f(w, 'TeamProject'), number: w.id, title: f(w, 'Title'), url: wiUrl(w), type: f(w, 'WorkItemType'),
       since: assignedAt || f(w, 'CreatedDate'),
-      assignees: [name(f(w, 'AssignedTo'))].filter(Boolean), body: text(f(w, 'Description')).slice(0, 20000),
+      assignees: [name(f(w, 'AssignedTo'))].filter(Boolean), body: text(f(w, 'Description')).slice(0, BODY),
       comments: await comments(w),
       status: f(w, 'State'), sprint: current ? f(w, 'IterationPath').split('\\').pop() : '-',
       sprint_end: current ? sp.finishDate.slice(0, 10) : null,
@@ -98,10 +98,7 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
   const mine = [];
   for (const p of await prList(`searchCriteria.creatorId=${me.id}`)) {
     const ts = await threads(p);
-    const all = ts.flatMap(t => t.comments.map(c => ({ ...c, thread: t.id })));
-    // feedback counts only if it came after both the window start and my own last reply
-    const after = [SINCE, ...all.filter(c => isMe(c.author)).map(c => c.publishedDate)].sort().pop();
-    const fresh = all.filter(c => !isMe(c.author) && c.publishedDate > after).sort((a, b) => a.publishedDate.localeCompare(b.publishedDate));
+    const fresh = freshFeedback(ts.flatMap(t => t.comments.map(c => ({ by_me: isMe(c.author), at: c.publishedDate, thread: t.id }))), SINCE);
     const votes = (p.reviewers || []).filter(r => !isMe(r));
     const checks = await ado(`${ORG}/${encodeURIComponent(p.repository.project.name)}/_apis/policy/evaluations?artifactId=${encodeURIComponent(`vstfs:///CodeReview/CodeReviewId/${p.repository.project.id}/${p.pullRequestId}`)}&api-version=7.1-preview.1`)
       .then(r => (r.value || []).filter(e => /build/i.test(e.configuration?.type?.displayName || '')).map(e => e.status)).catch(() => []);
@@ -109,11 +106,9 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
     mine.push({
       repo: `${p.repository.project.name}/${p.repository.name}`, number: p.pullRequestId, title: p.title, url: prUrl(p), draft: !!p.isDraft, since: p.creationDate,
       size: { files: await files(p).catch(() => null) },
-      // approved: every required reviewer approved - or, with none required, someone approved and nobody objects
-      review: votes.some(r => r.vote === -10) ? 'CHANGES_REQUESTED' : votes.some(r => r.vote === -5) ? 'WAITING_FOR_AUTHOR'
-        : (votes.some(r => r.isRequired) ? votes.filter(r => r.isRequired).every(r => r.vote >= 5) : votes.some(r => r.vote >= 5)) ? 'APPROVED' : 'PENDING',
+      review: adoReview(votes),
       merge: p.mergeStatus,   // "conflicts" means it can't merge as it is
-      ci: checks.includes('rejected') ? 'FAILURE' : checks.some(s => s === 'running' || s === 'queued') ? 'PENDING' : checks.length ? 'SUCCESS' : 'NONE',
+      ci: adoCi(checks),
       unresolved_threads: ts.filter(t => t.status === 'active').length,
       new_feedback: fresh.length,
       latest_feedback_url: fresh.length ? `${prUrl(p)}?discussionId=${fresh.at(-1).thread}` : null,
@@ -122,28 +117,24 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
     });
   }
 
-  // Waiting on your review: you're a reviewer, you haven't approved, and it isn't your own. A PR you voted down is the
-  // author's move - until they push again after your last word, which makes it a re-review.
+  // Waiting on your review: you're a reviewer, you haven't approved, and it isn't your own (adoReviewWait)
   const review_requests = [];
   for (const p of await prList(`searchCriteria.reviewerId=${me.id}`)) {
     if (isMe(p.createdBy)) continue;
     const vote = (p.reviewers || []).find(isMe)?.vote ?? 0;
-    if (vote >= 5) continue;
+    // a PR you voted down: your last word on it, and its last push
     const myLast = vote < 0 ? (await threads(p)).flatMap(t => t.comments).filter(c => isMe(c.author)).map(c => c.publishedDate).sort().pop() : null;
     const pushed = vote < 0 ? await lastPush(p) : null;
-    if (vote < 0 && !(pushed && (!myLast || pushed > myLast))) continue;
-    const since = vote < 0 ? pushed : p.creationDate;
+    const wait = adoReviewWait({ vote, created: p.creationDate, myLast, pushed });
+    if (!wait) continue;
     review_requests.push({
       repo: `${p.repository.project.name}/${p.repository.name}`, number: p.pullRequestId, title: p.title, url: prUrl(p), author: name(p.createdBy),
-      draft: !!p.isDraft, rereview: vote < 0, size: { files: await files(p).catch(() => null) }, since, waiting_days: daysSince(since),
+      draft: !!p.isDraft, rereview: wait.rereview, size: { files: await files(p).catch(() => null) }, since: wait.since, waiting_days: daysSince(wait.since),
     });
   }
 
-  // "My work": one row per work item with its PRs nested; PRs linked to none of them sit flat
-  const work = [
-    ...pbis.map(b => ({ ...b, kind: 'pbi', prs: mine.filter(r => r.parent === b.number) })),
-    ...mine.filter(r => !pbis.some(b => b.number === r.parent)).map(r => ({ ...r, kind: 'pr' })),
-  ];
+  // "My work": each work item with the PRs linked to it
+  const work = workTree(pbis, mine, (r, b) => r.parent === b.number);
 
   // @mentions in work item discussions since SINCE (@RecentMentions: the last 30 days). Mentions in PR comments come
   // as notification mail.
@@ -155,7 +146,7 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
     mentions.push({
       repo: f(w, 'TeamProject'), type: f(w, 'WorkItemType'), title: f(w, 'Title'), url: wiUrl(w), updated: f(w, 'ChangedDate'),
       state: f(w, 'State'), assignees: [name(f(w, 'AssignedTo'))].filter(Boolean), author: name(f(w, 'CreatedBy')),
-      body: text(f(w, 'Description')).slice(0, 20000), comments: cs.map(({ me: _, ...c }) => c),
+      body: text(f(w, 'Description')).slice(0, BODY), comments: cs.map(({ me: _, ...c }) => c),
       last_by: last?.by ?? name(f(w, 'CreatedBy')), answered: !!last?.me,
     });
   }
@@ -163,9 +154,12 @@ async function fromOrg(ORG, SINCE, LOOKBACK) {
   return { me: me.providerDisplayName || null, review_requests, work, mentions };
 }
 
-// Current state of Azure DevOps work items and PRs a carried-over item points at, by URL - so the run can tell a merged
-// or closed one from one still open when nothing new came in about it
-export async function adoStates(urls) {
+// Azure DevOps work items and PRs the previous run's items point at (`carried`, their links) that this run's lists
+// don't carry, with their state now - so the run can tell a merged or closed one from one still open when nothing new
+// came in about it
+export async function adoStates(carried, az) {
+  const known = [...(az.work || []).flatMap(w => [w, ...(w.prs || [])]), ...(az.review_requests || []), ...(az.mentions || [])].map(x => x.url);
+  const urls = carriedOver(JSON.stringify(carried), /https:\/\/dev\.azure\.com\/[^"\s?#]+\/(?:_workitems\/edit|pullrequest)\/\d+/g, known, 30);
   const out = {};
   for (const u of urls) {
     const wi = u.match(/^(https:\/\/dev\.azure\.com\/[^/]+)\/[^/]+\/_workitems\/edit\/(\d+)/);
