@@ -16,7 +16,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
-import { OUT, PROFILE, SCHEDULE, SKILL, chromePath, tool } from './common.mjs';
+import { OUT, PROFILE, SKILL, chromePath, config, tool } from './common.mjs';
 import { busy, slotOf } from './gate.mjs';
 
 const PORT = 47615;
@@ -49,9 +49,9 @@ let queued = false;   // a run asked for while one was going: it starts once tha
 
 // A timer looks twice a minute, so after the computer wakes up, the slot it slept through runs straight away.
 // Not when the service starts: logging in isn't a slot turning.
-let lastSlot = slotOf(new Date(), SCHEDULE);
+let lastSlot = slotOf(new Date(), config.schedule);
 setInterval(() => {
-  const s = slotOf(new Date(), SCHEDULE), turned = s !== lastSlot;
+  const s = slotOf(new Date(), config.schedule), turned = s !== lastSlot;
   lastSlot = s;
   if (occupied() || !(turned || queued)) return;
   start(queued);

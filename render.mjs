@@ -10,16 +10,15 @@ import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OUT, SCHEDULE, SENT, SKILL, WIN, config, tool } from './common.mjs';
+import { OUT, SENT, SKILL, WIN, config, tool } from './common.mjs';
 import { nextRun } from './gate.mjs';
 import { intake } from './intake.mjs';
 
 const RUNS = join(OUT, 'runs');
 
 // Outlook folder paths -> names, so the panel can say which folder a mail link opens (only Inbox mail opens itself)
-const mail = config.mail || {};
 const path = u => { try { return new URL(u).pathname.replace(/\/$/, ''); } catch { return ''; } };
-const MAIL_FOLDERS = Object.fromEntries([...(mail.received_folders || []).map(f => [f.name, f.url]), ['Sent', SENT]]
+const MAIL_FOLDERS = Object.fromEntries([...config.mail.received_folders.map(f => [f.name, f.url]), ['Sent', SENT]]
   .filter(([, u]) => u).map(([n, u]) => [path(u), n]));
 
 const runFiles = () => { mkdirSync(RUNS, { recursive: true }); return readdirSync(RUNS).filter(f => f.endsWith('.json')).sort(); };
@@ -27,7 +26,8 @@ const pad = n => String(n).padStart(2, '0');
 
 function writePanel(data) {
   // when the next scheduled run starts, after the one shown: the page's "Next sync", and how it tells a stale panel
-  data = { ...data, interval_min: SCHEDULE.every_minutes, next_run: nextRun(new Date(data.generated_at), SCHEDULE)?.toISOString() ?? null, mail_folders: MAIL_FOLDERS };
+  const { schedule } = config;
+  data = { ...data, interval_min: schedule.every_minutes, next_run: nextRun(new Date(data.generated_at), schedule)?.toISOString() ?? null, mail_folders: MAIL_FOLDERS };
   // the panel model goes into the page itself: an index.html opened from disk can't load a module beside it
   const template = readFileSync(join(SKILL, 'template.html'), 'utf8').replace('__PANEL__', () => readFileSync(join(SKILL, 'panel.cjs'), 'utf8'));
   // The open page polls stamp.js once a minute and reloads only when it changes: new data, the syncing flag, or a

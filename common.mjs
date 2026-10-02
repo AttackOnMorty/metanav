@@ -2,18 +2,16 @@
 // and calls to the command-line tools and web APIs Meta-Nav reads from.
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readConfig } from './config.mjs';
 
 export const SKILL = dirname(fileURLToPath(import.meta.url));
-export const CONFIG = join(SKILL, 'config.json');
-export const config = JSON.parse(readFileSync(CONFIG, 'utf8'));
+export const config = readConfig(join(SKILL, 'config.json'));
 export const OUT = (config.output_dir || '~/metanav').replace(/^~(?=$|[\\/])/, homedir());
 export const SENT = 'https://outlook.office.com/mail/sentitems';   // the same for everyone
-// Scheduled syncs: every so many minutes, on weekdays between these hours
-export const SCHEDULE = { every_minutes: 60, start_hour: 9, end_hour: 18, ...config.schedule };
 export const WIN = process.platform === 'win32';
 
 // The runs' own browser profile, named after the output dir, in this OS's cache folder

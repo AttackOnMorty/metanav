@@ -10,7 +10,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { CONFIG, OUT, SCHEDULE, SKILL, config, tool } from './common.mjs';
+import { OUT, SKILL, config, tool } from './common.mjs';
 import { acquire, allowed, release } from './gate.mjs';
 import { renderBrief, repaint } from './render.mjs';
 
@@ -19,7 +19,7 @@ const now = new Date();
 const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 function pad(n) { return String(n).padStart(2, '0'); }
 
-if (!allowed(now, SCHEDULE, process.argv.includes('--manual'))) process.exit(0);
+if (!allowed(now, config.schedule, process.argv.includes('--manual'))) process.exit(0);
 
 mkdirSync(join(OUT, 'logs'), { recursive: true });
 
@@ -33,7 +33,7 @@ repaint(true);   // "Syncing…" on the open panel until this run rewrites it
 const read = f => { try { return readFileSync(f, 'utf8').trim(); } catch { return ''; } };
 const runs = existsSync(join(OUT, 'runs')) ? readdirSync(join(OUT, 'runs')).filter(f => f.endsWith('.json')).sort() : [];
 const PREV = runs.length && !RESCAN ? join(OUT, 'runs', runs.at(-1)) : '';
-const LOOKBACK = new Date(Date.now() - (config.lookback_days ?? 30) * 864e5).toISOString().slice(0, 19) + 'Z';
+const LOOKBACK = new Date(Date.now() - config.lookback_days * 864e5).toISOString().slice(0, 19) + 'Z';
 let SINCE = (!RESCAN && read(join(OUT, '.last-run'))) || LOOKBACK;
 if (SINCE < LOOKBACK) SINCE = LOOKBACK;   // back from a long break: loops don't reach further than this
 const FIRST = PREV ? 'no' : 'yes';
@@ -46,7 +46,7 @@ const INPUTS = join(DIR, 'inputs.json'), BRIEF = join(DIR, 'brief.json');
 const collect = spawnSync(process.execPath, [join(SKILL, 'collect.mjs'), SINCE, LOOKBACK, FIRST, PREV, INPUTS], { encoding: 'utf8', timeout: 5 * 60e3, windowsHide: true });
 const collected = `${collect.stdout || ''}${collect.stderr || ''}`.trim();
 
-// Judge. The agent reads the inputs, the previous result, the user's clicks and tactics and the config, follows JUDGE.md,
+// Judge. The agent reads the inputs, the previous result and the user's clicks and tactics, follows JUDGE.md,
 // and writes BRIEF - nothing else: no network, no shell of its own, so it runs with the least access either agent has.
 // The prompt goes in on stdin: it's long, and on Windows the agents start through the shell.
 const prompt = `You are Meta-Nav's judge, running unattended: nobody will answer a question, so decide, finish and write the file.
@@ -58,12 +58,11 @@ NOW=${NOW}
 INPUTS=${INPUTS}
 PREV=${PREV || 'none'}
 STATE=${join(OUT, 'state.json')}
-CONFIG=${CONFIG}
 BRIEF=${BRIEF}
+USER=${config.user.name} (${config.user.short_name || config.user.name.split(' ')[0]})
 Write your result to BRIEF and change no other file. Then reply with the summary JUDGE.md asks for.`;
 
-const agent = config.judge?.agent || 'claude';
-const model = config.judge?.model || '';
+const { agent, model } = config.judge;
 const t0 = Date.now();
 let log;
 if (!existsSync(INPUTS)) {
@@ -75,7 +74,7 @@ if (!existsSync(INPUTS)) {
   const last = join(DIR, 'last-message.txt');
   const r = tool('codex', ['exec', '--json', '--ignore-user-config', '--disable', 'hooks', '--skip-git-repo-check', '--ephemeral',
     '--sandbox', 'workspace-write', '--cd', DIR, '-c', 'model_reasoning_effort=high',
-    ...(model && !/^(opus|sonnet|haiku|claude)/.test(model) ? ['--model', model] : []),
+    ...(model ? ['--model', model] : []),
     '--output-last-message', last, '-'], { cwd: DIR, input: prompt, timeout: 20 * 60e3 });
   // token use, from each turn's usage event, so a run's cost can be worked out (Claude Code reports its own)
   const usage = {};
@@ -86,7 +85,7 @@ if (!existsSync(INPUTS)) {
   log = { agent, model: model || 'default', is_error: r.status !== 0, result: read(last) || (r.stderr || '').slice(-4000), usage };
 } else {
   // Only Read and Write: no MCP servers (--strict-mcp-config with none given), no shell, no other tool
-  const r = tool('claude', ['-p', '--model', model || 'opus', '--strict-mcp-config',
+  const r = tool('claude', ['-p', '--model', model, '--strict-mcp-config',
     '--add-dir', SKILL, '--allowedTools', 'Read', 'Write', '--output-format', 'json'],
     { cwd: OUT, input: prompt, timeout: 20 * 60e3 });
   try { log = { agent, ...JSON.parse(r.stdout) }; } catch { log = { agent, is_error: true, result: `${r.stdout || ''}${r.stderr || ''}`.slice(-4000) }; }

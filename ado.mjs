@@ -11,9 +11,8 @@ const daysSince = t => Math.floor((Date.now() - Date.parse(t)) / 864e5);
 const name = u => u?.displayName?.replace(/\s*\[[^\]]*\]$/, '') || null;   // "Sam Lee [Acme]" -> "Sam Lee"
 
 export async function fromAdo(SINCE, LOOKBACK) {
-  // each organisation by name ("contoso", or its https://dev.azure.com/contoso link); one that can't be read doesn't hold
-  // up the others
-  const orgs = (config.azure_devops?.orgs || []).map(o => `https://dev.azure.com/${String(o).replace(/^https:\/\/dev\.azure\.com\//, '').split('/')[0]}`);
+  // one that can't be read doesn't hold up the others
+  const orgs = config.azure_devops.orgs;
   if (!orgs.length) return { ok: true, skipped: true };
   const out = { ok: true, me: null, orgs: [], review_requests: [], work: [], mentions: [], errors: [] };
   for (const ORG of orgs) {

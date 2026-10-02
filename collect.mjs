@@ -14,7 +14,7 @@ import { adoStates } from './ado.mjs';
 import { fetchAll } from './fetch.mjs';
 
 const [SINCE, LOOKBACK, FIRST, PREV, OUT] = process.argv.slice(2);
-const BOTS = config.teams?.skip_chats ?? [];   // bot and reminder chats: not people
+const BOTS = config.teams.skip_chats;   // bot and reminder chats: not people
 
 const t0 = Date.now();
 const timings = {};
@@ -100,8 +100,9 @@ async function readFolder(page, url) {
 }
 
 async function outlook(page, prev) {
-  const mail = { signin_needed: false, folders: {}, calendar: [] };
   const received = config.mail.received_folders;
+  // each folder's link, for the run's mail links (only the Inbox opens a single mail)
+  const mail = { signin_needed: false, folders: {}, urls: Object.fromEntries([...received.map(f => [f.name, f.url]), ['Sent', SENT]]), calendar: [] };
   for (const f of [...received, { name: 'Sent', url: SENT }]) {
     const rows = await timed(`Outlook ${f.name}`, () => readFolder(page, f.url));
     if (rows === null) { mail.signin_needed = true; return mail; }
