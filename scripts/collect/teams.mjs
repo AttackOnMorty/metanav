@@ -30,6 +30,17 @@ export async function readCache(lookback) {
   };
 }
 
+// How far the cache has caught up: how many reply chains, and the newest message's time ('' before it exists)
+export async function cacheState() {
+  const d = (await indexedDB.databases()).find(x => /^Teams:replychain-manager:/.test(x.name));
+  if (!d) return '';
+  const db = await new Promise((res, rej) => { const q = indexedDB.open(d.name); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
+  if (!db.objectStoreNames.contains('replychains-2')) { db.close(); return ''; }
+  const all = await new Promise(res => { const q = db.transaction('replychains-2', 'readonly').objectStore('replychains-2').getAll(); q.onsuccess = () => res(q.result); });
+  db.close();
+  return `${all.length}:${Math.max(0, ...all.map(r => r.latestDeliveryTime || 0))}`;
+}
+
 // ---- in Node
 
 const MAX_PER_CONV = 40;

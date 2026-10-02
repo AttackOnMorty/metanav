@@ -12,7 +12,7 @@ import { PROFILE, SENT, config } from '../lib/common.mjs';
 import { adoStates, fromAdo } from './ado.mjs';
 import { fromGithub, githubStates } from './github.mjs';
 import { calendarEvents, drawnRows, isMeeting, meetingTime, pageLabels, rowTexts, rowTime, scrollList } from './outlook.mjs';
-import { conversations, readCache } from './teams.mjs';
+import { cacheState, conversations, readCache } from './teams.mjs';
 
 const [SINCE, LOOKBACK, FIRST, PREV, OUT] = process.argv.slice(2);
 
@@ -109,23 +109,17 @@ async function outlook(page, prev) {
 
 async function teams(page) {
   if (!await timed('Teams open', () => open(page, 'https://teams.microsoft.com/v2/'))) return { signin_needed: true, conversations: [] };
-  // Teams catches its local cache up in batches after it opens. Wait until the newest message stops changing for
-  // 6 seconds (40 at most): a fixed wait is either slower than needed or, after a long gap, too short.
-  const newest = () => page.evaluate(async () => {
-    const d = (await indexedDB.databases()).find(x => /^Teams:replychain-manager:/.test(x.name));
-    if (!d) return 0;
-    const db = await new Promise((res, rej) => { const q = indexedDB.open(d.name); q.onsuccess = () => res(q.result); q.onerror = () => rej(q.error); });
-    if (!db.objectStoreNames.contains('replychains-2')) { db.close(); return 0; }
-    const all = await new Promise(res => { const q = db.transaction('replychains-2', 'readonly').objectStore('replychains-2').getAll(); q.onsuccess = () => res(q.result); });
-    db.close();
-    return Math.max(0, ...all.map(r => r.latestDeliveryTime || 0));
-  }).catch(() => 0);
+  // Teams catches its local cache up in batches after it opens, with pauses of up to ten seconds between them; on a
+  // new profile (a first run) that's minutes of history, the newest chats first. Wait until the cache has neither new
+  // chats nor new messages for a while: 6 seconds (40 at most), or on a first run 15 (150 at most) - read too soon,
+  // and the 30 days of loops a first run is for never reach the panel.
+  const [quiet, most] = FIRST === 'yes' ? [15e3, 150e3] : [6e3, 40e3];
   await timed('Teams cache', async () => {
     const start = Date.now();
-    let last = 0, since = Date.now();
-    while (Date.now() - start < 40000) {
-      const n = await newest();
-      if (n !== last) { last = n; since = Date.now(); } else if (n && Date.now() - since >= 6000) break;
+    let last = '', since = Date.now();
+    while (Date.now() - start < most) {
+      const s = await page.evaluate(cacheState).catch(() => '');
+      if (s !== last) { last = s; since = Date.now(); } else if (s && Date.now() - since >= quiet) break;
       await sleep(1000);
     }
   });
