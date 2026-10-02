@@ -1,15 +1,17 @@
 #!/usr/bin/env node
 // Refresh Meta-Nav: hours guard, lock, collect, judge, render, clean up.
-// The background service (state.mjs) starts it on config.schedule; `metanav` and the panel's SYNC NOW drop a .manual
-// flag first, which skips the hours.
+// The background service (state.mjs) starts it on config.schedule; for `metanav` and the panel's SYNC NOW it adds
+// --manual, which skips the hours.
 // Everything here is deterministic. The only judgement - what's yours, what others owe you, in what order - is one
 // call to the agent in config.json ("claude" or "codex"), which reads files and writes one file, brief.json.
-//   node run.mjs            a scheduled run (weekdays within config.schedule's hours, unless .manual is there)
+//   node run.mjs            a scheduled run (weekdays within config.schedule's hours)
+//   node run.mjs --manual   a run the user asked for, at any hour
 //   node run.mjs --rescan   a full rescan: rebuild everything over the whole lookback
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { CONFIG, OUT, SCHEDULE, SKILL, config, tool } from './common.mjs';
+import { acquire, allowed, release } from './gate.mjs';
 import { renderBrief, repaint } from './render.mjs';
 
 const RESCAN = process.argv.includes('--rescan');
@@ -17,22 +19,13 @@ const now = new Date();
 const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}`;
 function pad(n) { return String(n).padStart(2, '0'); }
 
-// A run the user asked for ignores the hours
-const manual = join(OUT, '.manual');
-if (existsSync(manual)) rmSync(manual);
-else {
-  const day = now.getDay(), hour = now.getHours();
-  if (day < 1 || day > 5 || hour < SCHEDULE.start_hour || hour > SCHEDULE.end_hour) process.exit(0);
-}
+if (!allowed(now, SCHEDULE, process.argv.includes('--manual'))) process.exit(0);
 
 mkdirSync(join(OUT, 'logs'), { recursive: true });
 
-// One run at a time - a slow run shouldn't overlap the next tick. A lock older than 20 minutes is left over
-// from a run that died (lid closed, power off): clear it, or every later run would skip silently.
-const lock = join(OUT, '.running');
-if (existsSync(lock) && Date.now() - statSync(lock).mtimeMs > 20 * 60e3) rmSync(lock, { recursive: true });
-try { mkdirSync(lock); } catch { process.exit(0); }
-process.on('exit', () => rmSync(lock, { recursive: true, force: true }));
+// One run at a time - a slow run shouldn't overlap the next tick
+if (!acquire(OUT)) process.exit(0);
+process.on('exit', () => release(OUT));
 
 repaint(true);   // "Syncing…" on the open panel until this run rewrites it
 
@@ -99,7 +92,7 @@ log.duration_ms ??= Date.now() - t0;
 log.collect = collected;
 
 // Render what the judge wrote. A run that wrote nothing usable leaves the last good result up - the panel marks it
-// stale once it's over one and a half intervals old.
+// stale once the next run is well overdue.
 let brief = null;
 try { brief = JSON.parse(readFileSync(BRIEF, 'utf8')); } catch (e) { log.is_error = true; log.brief_error = String(e.message || e); }
 if (brief) {

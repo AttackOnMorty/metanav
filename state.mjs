@@ -8,14 +8,16 @@
 //   POST /state   {"key": "tower:dismissed" | "tower:read" | "metanav:tactics", "value": {...}}   -> the whole state, as JSON
 //   POST /signin  {"source": "Azure DevOps" | "Outlook" | "Teams"}          -> {"status": "started" | "busy"}
 //                 The banner's SIGN IN button: a window to sign in, then a refresh.
-//   POST /refresh {}                                                         -> {"status": "started" | "busy"}
+//   POST /refresh {} | {"queue": true}                                       -> {"status": "started" | "busy" | "queued"}
 //                 The panel's SYNC NOW button: a run now, whatever the hour (busy if one is running, or a sign-in window is open).
+//                 With "queue" (saving tactics), a busy service starts the run as soon as it can instead.
 // Writes <output dir>/state.json (read by each run, JUDGE.md step 5) and state.js (the same, for the page's <script> tag).
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { OUT, PROFILE, SCHEDULE, SKILL, chromePath, tool } from './common.mjs';
+import { busy, slotOf } from './gate.mjs';
 
 const PORT = 47615;
 const KEYS = ['tower:dismissed', 'tower:read', 'metanav:tactics'];
@@ -38,21 +40,22 @@ function save(state) {
 
 // A run. `manual`: one the user asked for (SYNC NOW, `metanav`, a sign-in that worked) - run.mjs skips the hours for it.
 function start(manual) {
-  if (manual) writeFileSync(join(OUT, '.manual'), '');
-  spawn(process.execPath, [join(SKILL, 'run.mjs')], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+  spawn(process.execPath, [join(SKILL, 'run.mjs'), ...(manual ? ['--manual'] : [])], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
 }
 const refresh = () => start(true);
+// one run at a time (run.mjs locks too), and not while a sign-in window holds the browser profile
+const occupied = () => busy(OUT) || signing.has('microsoft');
+let queued = false;   // a run asked for while one was going: it starts once that one is done
 
-// Every so many minutes, counted from midnight (every 60: on the hour). A timer looks twice a minute, so after the
-// computer wakes up, the slot it slept through runs straight away. Not when the service starts: logging in isn't a slot turning.
-const slotOf = d => `${d.toDateString()} ${Math.floor((d.getHours() * 60 + d.getMinutes()) / SCHEDULE.every_minutes)}`;
-let lastSlot = slotOf(new Date());
+// A timer looks twice a minute, so after the computer wakes up, the slot it slept through runs straight away.
+// Not when the service starts: logging in isn't a slot turning.
+let lastSlot = slotOf(new Date(), SCHEDULE);
 setInterval(() => {
-  const s = slotOf(new Date());
-  if (s === lastSlot) return;
+  const s = slotOf(new Date(), SCHEDULE), turned = s !== lastSlot;
   lastSlot = s;
-  // one run at a time (run.mjs locks too), and not while a sign-in window holds the browser profile
-  if (!existsSync(join(OUT, '.running')) && !signing.has('microsoft')) start(false);
+  if (occupied() || !(turned || queued)) return;
+  start(queued);
+  queued = false;
 }, 30e3);
 
 // Outlook's mail page is titled "Mail - <name> - Outlook", and Teams "<view> | Microsoft Teams", only once you're past
@@ -96,7 +99,7 @@ function signInAzure() {
 function signIn(source) {
   const what = source === 'Azure DevOps' ? 'azure' : 'microsoft';
   // a run holds the browser profile while it reads Outlook and Teams
-  if (signing.has(what) || (what === 'microsoft' && existsSync(join(OUT, '.running')))) return 'busy';
+  if (signing.has(what) || (what === 'microsoft' && busy(OUT))) return 'busy';
   signing.add(what);
   (async () => {
     try { if (await (what === 'azure' ? signInAzure() : signInMicrosoft())) refresh(); }
@@ -127,10 +130,9 @@ const server = createServer((req, res) => {
     } catch { return reply(res, 400); }
     if (req.url === '/signin') return reply(res, 200, { status: signIn(body.source) });
     if (req.url === '/refresh') {
-      // one run at a time, and not while a sign-in window holds the browser profile
-      const busy = existsSync(join(OUT, '.running')) || signing.has('microsoft');
-      if (!busy) refresh();
-      return reply(res, 200, { status: busy ? 'busy' : 'started' });
+      if (!occupied()) { refresh(); return reply(res, 200, { status: 'started' }); }
+      if (body.queue) queued = true;
+      return reply(res, 200, { status: queued ? 'queued' : 'busy' });
     }
     const state = load();
     state[body.key] = body.value;

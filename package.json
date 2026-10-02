@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "description": "collect.mjs drives the installed Google Chrome; `npm install` here once",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "playwright-core": "1.63.0"
   }

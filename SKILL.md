@@ -8,7 +8,7 @@ description: Refresh Meta-Nav, the user's live work panel - built from Outlook m
 The panel refreshes itself: `run.mjs`, beside this file, runs by itself on weekdays (`schedule` in `config.json`: hourly by default). It collects, has an agent judge with `JUDGE.md`, and renders the page. Don't judge anything yourself here. Its output folder is `~/metanav` (`output_dir` in `config.json` beside this file, if set).
 
 **A refresh now** (the user asks for one, or runs `/metanav`):
-1. Start a run, the same as the panel's SYNC NOW: POST `{}` to `http://127.0.0.1:47615/refresh` — `curl -s -X POST -d '{}' http://127.0.0.1:47615/refresh` on macOS, `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/refresh -Body '{}'` on Windows. If nothing answers, create `<output_dir>/.manual` and run `node run.mjs` from this folder instead.
+1. Start a run, the same as the panel's SYNC NOW: POST `{}` to `http://127.0.0.1:47615/refresh` — `curl -s -X POST -d '{}' http://127.0.0.1:47615/refresh` on macOS, `Invoke-RestMethod -Method Post -Uri http://127.0.0.1:47615/refresh -Body '{}'` on Windows. If nothing answers, run `node run.mjs --manual` from this folder instead.
 2. Wait until `<output_dir>/.running` is gone: 2–4 minutes, up to 10 on a first run.
 3. Read the newest file in `<output_dir>/logs/` and pass on its `result`, the judge's summary. If `is_error` is true, say what failed.
 

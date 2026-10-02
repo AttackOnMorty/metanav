@@ -605,8 +605,11 @@ function model() {
   // sync state
   const sources = B.sources || [], failed = sources.filter(s => !s.ok);
   const interval = B.interval_min || 60, m = mins(B.generated_at);
-  const at = hhmm(new Date(B.generated_at)), next = hhmm(new Date(Date.parse(B.generated_at) + interval * 60000));
-  const state = B.syncing ? 'syncing' : failed.length ? 'failed' : m > 1.5 * interval ? 'stale' : 'ok';
+  // stale: the next scheduled run is overdue by half an interval and hasn't shown up
+  const nextAt = new Date(B.next_run || Date.parse(B.generated_at) + interval * 60000);
+  const at = hhmm(new Date(B.generated_at)), next = nextAt.toDateString() === now.toDateString() ? hhmm(nextAt)
+    : `${nextAt.toLocaleDateString('en-AU', { weekday: 'short' })} ${hhmm(nextAt)}`;
+  const state = B.syncing ? 'syncing' : failed.length ? 'failed' : now - nextAt > interval * 30000 ? 'stale' : 'ok';
   const sync = {
     state, at, next, ago: m,
     text: { syncing: `Syncing… (last ${at})`, failed: `${failed.map(s => s.name).join(', ')} not synced`, stale: `Synced ${at} · stale`, ok: `Synced ${at}` }[state],
@@ -832,20 +835,24 @@ function syncPill(V) {
   return `<span class="hud-sync ${state}">${e(text)}</span>` +
     `<button class="hud-go" data-refresh ${state === 'syncing' ? 'disabled' : ''} aria-label="Sync now">SYNC NOW</button>`;
 }
-document.addEventListener('click', async ev => {
-  const b = ev.target.closest('[data-refresh]');
-  if (!b || b.disabled) return;
-  ev.preventDefault();
+// `queue`: a run is wanted even if one is going (new tactics) - the service starts it once that one is done
+async function sync(queue = false) {
   syncAsked = Date.now(); syncHelperOff = false;
   render();
   try {
     // "busy" means a run is already going: "Syncing…" is right either way
-    const r = await fetch(STATE_URL.replace(/state$/, 'refresh'), { method: 'POST', body: '{}' });
+    const r = await fetch(STATE_URL.replace(/state$/, 'refresh'), { method: 'POST', body: JSON.stringify(queue ? { queue } : {}) });
     if (!r.ok) throw new Error(r.status);
   } catch {
     syncAsked = 0; syncHelperOff = true;
     render();
   }
+}
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('[data-refresh]');
+  if (!b || b.disabled) return;
+  ev.preventDefault();
+  sync();
 });
 
 // The time of day just moved on (Afternoon → After School) since this tab last drew it: play the change once.
@@ -1280,7 +1287,7 @@ document.addEventListener('click', ev => {
   const orders = [...tactics.querySelectorAll('textarea')].map(x => x.value.replace(/\s+/g, ' ').trim()).filter(Boolean);
   const changed = JSON.stringify(orders) !== JSON.stringify(TACTICS.get().orders || []);
   closeTactics();
-  if (changed) { TACTICS.set({ orders }); document.querySelector('#app [data-refresh]:not([disabled])')?.click(); }
+  if (changed) { TACTICS.set({ orders }); sync(true); }
 });
 
 // Draft boxes grow with their text, so a drafted message is never cut off.

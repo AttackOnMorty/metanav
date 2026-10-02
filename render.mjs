@@ -11,6 +11,7 @@ import { mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'nod
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { OUT, SCHEDULE, SENT, SKILL, WIN, config, tool } from './common.mjs';
+import { nextRun } from './gate.mjs';
 
 // Sections whose items get a "+NEW" flag when they weren't in the previous run ("done": closed since the last run)
 const TRACKED = ['queue', 'waiting', 'highlights', 'done'];
@@ -26,7 +27,8 @@ const runFiles = () => { mkdirSync(RUNS, { recursive: true }); return readdirSyn
 const pad = n => String(n).padStart(2, '0');
 
 function writePanel(data) {
-  data = { ...data, interval_min: SCHEDULE.every_minutes, mail_folders: MAIL_FOLDERS };
+  // when the next scheduled run starts, after the one shown: the page's "Next sync", and how it tells a stale panel
+  data = { ...data, interval_min: SCHEDULE.every_minutes, next_run: nextRun(new Date(data.generated_at), SCHEDULE)?.toISOString() ?? null, mail_folders: MAIL_FOLDERS };
   const template = readFileSync(join(SKILL, 'template.html'), 'utf8');
   // The open page polls stamp.js once a minute and reloads only when it changes: new data, the syncing flag, or a
   // new template. Written after index.html, so a reload always gets the new page.
